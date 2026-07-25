@@ -9,6 +9,8 @@
 - デモ環境: `準備中`
 - 要件定義書: [docs/クラウドプラットフォーム実習Ⅱレポート5_20122049_曽我幸太郎.docx](docs/)
 - 数理定式化: [docs/シフト最適化_数理定式化.md](docs/シフト最適化_数理定式化.md)
+- デプロイ手順: [docs/デプロイ手順.md](docs/デプロイ手順.md)
+- 発表スライド: [docs/発表スライド_CareShift_Guard.pptx](docs/)
 
 ---
 
@@ -183,6 +185,9 @@ careshift-guard/
 ├── scripts/                   サンプル生成
 ├── docs/
 │   ├── シフト最適化_数理定式化.md
+│   ├── デプロイ手順.md          OCI構築とスクリーンショット取得計画
+│   ├── 紹介動画_構成台本.md      3分の画面収録の台本
+│   ├── 発表スライド_*.pptx      make slides で再生成できる
 │   ├── images/                構成図・スクリーンショット
 │   └── samples/               サンプル出力（レビュー用に意図的にコミット）
 ├── .github/workflows/ci.yml   lint / test / SQL構文検証

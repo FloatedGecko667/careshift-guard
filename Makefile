@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help init vendor up down logs migrate seed shell test lint fmt sample clean
+.PHONY: help init vendor up down logs migrate seed shell test lint fmt sample slides smoke clean
 
 help:  ## 使えるターゲットを一覧表示する
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -51,6 +51,14 @@ sample:  ## サンプルの勤務形態一覧表を生成する
 	python3 -m scripts.export_sample
 	python3 -m scripts.render_preview docs/samples/preview_基準充足.html 24 22 42
 	python3 -m scripts.render_preview docs/samples/preview_基準違反あり.html 13 38 7
+
+slides:  ## 発表スライドを生成する（docs/images の画像を埋め込む）
+	@test -d node_modules || npm install pptxgenjs
+	node scripts/build_slides.js
+	@echo "PV_URL / DEMO_URL を指定すると、スライドのURL欄に反映されます"
+
+smoke:  ## 実サーバを起動して HTTP 経由で疎通を確認する
+	python3 -m scripts.smoke_test
 
 clean:  ## 生成物を削除する（docs/samples は残す）
 	rm -rf .pytest_cache .ruff_cache __pycache__ */__pycache__

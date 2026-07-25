@@ -66,3 +66,5 @@ _work/
 # 取得物（make vendor で配置する）
 # ---------------------------------------------------------------------
 app/static/htmx.min.js
+node_modules/
+package-lock.json
