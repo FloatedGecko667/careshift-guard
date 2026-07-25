@@ -1,0 +1,122 @@
+{#
+  希望シフト入力（画面No.3）。
+  スマートフォンでの操作を前提としたレイアウトにする。
+  職員は自分の希望しか登録できない。管理者は代理入力できる。
+#}
+{% extends "base.html" %}
+{% block title %}希望シフト｜CareShift Guard{% endblock %}
+
+{% block head %}
+<style>
+  .days{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px}
+  .day-row{border:1px solid var(--line);border-radius:7px;padding:8px 10px;
+           background:#fff;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .day-row.closed{background:#eceff3;color:#9aa3ad}
+  .day-row .d{font-weight:700;min-width:64px}
+  .day-row .cur{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
+  .cur.off{background:#fdf6e3;color:#8a6d1f}
+  .cur.pattern{background:#e8f0fe;color:var(--accent)}
+  .cur.unavailable{background:var(--err-bg);color:var(--err)}
+  .day-row form{display:flex;gap:5px;align-items:center;margin:0;margin-left:auto}
+  .day-row select{width:auto;padding:4px 6px;font-size:11.5px}
+  .day-row .btn{padding:4px 9px;font-size:11.5px}
+  .sat{color:#1f6feb} .sun{color:#c0392b}
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>希望シフト　{{ year }}年{{ month }}月</h1>
+
+{% if current_user and current_user.is_admin %}
+<div class="card">
+  <h2>代理入力する職員を選ぶ</h2>
+  <form method="get" action="/requests" style="display:flex;gap:8px;align-items:flex-end">
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <div style="min-width:220px">
+      <label for="sid">職員</label>
+      <select id="sid" name="staff_id" required>
+        {%- for s in staff %}
+        <option value="{{ s.staff_id }}"
+                {% if target_staff_id == s.staff_id %}selected{% endif %}>
+          {{ s.name }}</option>
+        {%- endfor %}
+      </select>
+    </div>
+    <button class="btn" type="submit">表示</button>
+  </form>
+</div>
+{% endif %}
+
+{% if not target_staff_id %}
+<div class="alert err">
+  対象の職員が特定できません。
+  {% if current_user and current_user.is_admin %}
+    上の一覧から職員を選んでください。
+  {% else %}
+    この利用者に職員情報が紐づいていないため希望を登録できません。
+    管理者に連絡してください。
+  {% endif %}
+</div>
+{% else %}
+
+<div class="card">
+  <p class="muted">
+    希望休と希望勤務区分はソフト制約です。人員配置基準を満たすことが優先され、
+    どうしても両立しない場合は反映されないことがあります。
+    反映できなかった希望はシフト表上で色分けして表示されます。
+    「勤務不可」は承認済みの休暇などに使い、こちらは必ず守られます。
+  </p>
+
+  <div class="days" style="margin-top:12px">
+    {#
+      1日分は partials/request_row.html に切り出している。
+      htmx が読み込まれていれば、登録・取消の際にこの断片だけが
+      差し替わる。読み込まれていなければ通常のフォーム送信になり、
+      全画面が再描画されるだけで機能は失われない。
+    #}
+    {%- for d in days %}
+      {% include "partials/request_row.html" %}
+    {%- endfor %}
+  </div>
+</div>
+
+{% if patterns %}
+<div class="card">
+  <h2>勤務区分を指定して希望する</h2>
+  <form method="post" action="/requests"
+        style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+    <input type="hidden" name="request_type" value="pattern">
+    {%- if current_user and current_user.is_admin %}
+    <input type="hidden" name="staff_id" value="{{ target_staff_id }}">
+    {%- endif %}
+    <div style="min-width:160px">
+      <label for="pd">日付</label>
+      <select id="pd" name="target_date" required>
+        {%- for d in days %}{% if not d.closed %}
+        <option value="{{ d.date }}">{{ d.n }}日（{{ d.weekday }}）</option>
+        {%- endif %}{% endfor %}
+      </select>
+    </div>
+    <div style="min-width:160px">
+      <label for="pp">勤務区分</label>
+      <select id="pp" name="shift_pattern_id" required>
+        {%- for p in patterns %}
+        <option value="{{ p.shift_pattern_id }}">{{ p.name }}</option>
+        {%- endfor %}
+      </select>
+    </div>
+    <div style="min-width:200px">
+      <label for="pn">備考</label>
+      <input id="pn" name="note" maxlength="200"
+             placeholder="子の学校行事のため早く上がりたい など">
+    </div>
+    <button class="btn primary" type="submit">登録</button>
+  </form>
+  <p class="muted" style="margin-top:8px">
+    備考は管理者が目視で確認します。自動では制約に反映されません。
+  </p>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

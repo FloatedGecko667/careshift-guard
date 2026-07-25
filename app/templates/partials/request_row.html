@@ -1,0 +1,56 @@
+{#
+  希望シフトの1日分。htmx による部分更新の差し替え単位。
+
+  この断片は単体でも成立する必要がある。
+  base.html は継承しない。
+#}
+<div class="day-row {{ 'closed' if d.closed }}" id="day-{{ d.date }}">
+  <span class="d">
+    {{ d.n }}日
+    <span class="{{ 'sun' if d.weekday == '日' else ('sat' if d.weekday == '土' else '') }}"
+    >（{{ d.weekday }}）</span>
+  </span>
+
+  {%- if d.closed %}
+    <span class="muted">休業日</span>
+  {%- else %}
+    {%- if d.request %}
+      {%- set t = d.request.request_type %}
+      <span class="cur {{ t }}">
+        {%- if t == 'off' %}希望休
+        {%- elif t == 'unavailable' %}勤務不可
+        {%- else %}区分希望{% endif %}
+      </span>
+    {%- endif %}
+
+    {#
+      hx-post があれば htmx が該当行だけを差し替える。
+      htmx が読み込まれていない場合は通常のフォーム送信となり、
+      全画面が再描画されるだけで機能は失われない。
+    #}
+    <form method="post" action="/requests"
+          hx-post="/requests" hx-target="#day-{{ d.date }}" hx-swap="outerHTML">
+      <input type="hidden" name="target_date" value="{{ d.date }}">
+      {%- if is_admin %}
+      <input type="hidden" name="staff_id" value="{{ target_staff_id }}">
+      {%- endif %}
+      <select name="request_type" aria-label="{{ d.n }}日の希望">
+        <option value="off">希望休</option>
+        <option value="unavailable">勤務不可</option>
+      </select>
+      <button class="btn" type="submit">登録</button>
+    </form>
+
+    {%- if d.request %}
+    <form method="post" action="/requests/delete"
+          hx-post="/requests/delete" hx-target="#day-{{ d.date }}"
+          hx-swap="outerHTML">
+      <input type="hidden" name="target_date" value="{{ d.date }}">
+      {%- if is_admin %}
+      <input type="hidden" name="staff_id" value="{{ target_staff_id }}">
+      {%- endif %}
+      <button class="btn" type="submit">取消</button>
+    </form>
+    {%- endif %}
+  {%- endif %}
+</div>

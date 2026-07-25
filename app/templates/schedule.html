@@ -1,0 +1,294 @@
+{#
+  シフト表画面（画面No.4）— 製品の中核。
+
+  設計方針
+    ・常勤換算と基準判定をシフト表と同一画面に置く。
+      別画面に分けると管理者が気づかず、減算を防ぐ目的を果たせない。
+    ・行と列の見出しは sticky で固定する。横31日分をスクロールしても
+      職員名と日付が視界から消えないことが実務上きわめて重要。
+    ・密なデータグリッドはユーティリティクラスより素のCSSのほうが素直。
+      外部CDNにも依存しない。
+    ・セルを直接編集する方式は、31日×職員数ぶんの入力要素をDOMに置くことに
+      なり動作が重い。初版は修正フォーム方式とし、セル直接編集は
+      第2リリースで対応する。
+    ・違反が1件でもあると確定ボタンを無効にする。減算リスクを抱えた
+      シフトを職員に配ってしまう事故を、画面の構造で防ぐ。
+
+  必要なコンテキスト:
+    office, schedule, days, groups, fte_rows, violations, stats, patterns
+#}
+{% extends "base.html" %}
+{% block title %}{{ schedule.month_label }} シフト表｜CareShift Guard{% endblock %}
+
+{% block head %}
+<style>
+  .sched-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px}
+  .sched-head h1{font-size:17px;margin:0}
+  .sched-head .month{font-size:15px;font-weight:600;color:var(--accent)}
+  .badge{display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;
+         font-weight:600}
+  .badge.draft{background:#fff3cd;color:#8a6d1f}
+  .badge.published{background:var(--ok-bg);color:var(--ok)}
+  .sched-head .meta{margin-left:auto;color:var(--muted);font-size:11px;text-align:right}
+
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
+  .bar form{display:flex;gap:8px;align-items:flex-end;margin:0}
+  .bar .field{display:flex;flex-direction:column}
+  .bar .field label{font-size:10.5px;margin-bottom:2px;color:var(--muted)}
+  .bar input,.bar select{width:auto;padding:6px 8px;font-size:12px}
+  .kpis{display:flex;flex-wrap:wrap;gap:18px;margin-top:6px;color:var(--fg);
+        font-weight:400}
+
+  .scroll{overflow:auto;max-height:70vh;border:1px solid var(--line);
+          border-radius:8px;background:#fff}
+  .grid{border-collapse:separate;border-spacing:0;font-size:11.5px;white-space:nowrap}
+  .grid th,.grid td{border-right:1px solid var(--line);
+                    border-bottom:1px solid var(--line);
+                    padding:3px 5px;text-align:center}
+  .grid thead th{position:sticky;top:0;z-index:3;background:var(--head);
+                 font-weight:700;height:30px}
+  .c-name{position:sticky;left:0;z-index:2;background:#fff;text-align:left;
+          min-width:104px;max-width:104px;font-weight:600;overflow:hidden;
+          text-overflow:ellipsis}
+  .c-emp{position:sticky;left:104px;z-index:2;background:#fff;
+         min-width:52px;max-width:52px;color:var(--muted);font-size:10.5px}
+  .grid thead .c-name,.grid thead .c-emp{z-index:4;background:var(--head)}
+  .c-sum{min-width:52px;background:#fbfcfd;font-weight:600}
+  .day{min-width:26px;max-width:26px}
+  .day .wd{display:block;font-size:9px;font-weight:400;color:var(--muted)}
+  .day.sat{background:#eef4fb} .day.sun{background:#fbeef0}
+  .day.closed{background:#eceff3;color:#9aa3ad}
+
+  .grp td{background:#f2f5f9;text-align:left;font-weight:700;font-size:11px;
+          padding:4px 8px;color:#334155}
+  td.cell{font-weight:600}
+  td.rest{background:#f0f2f5;color:#9aa3ad;font-weight:400}
+  td.manual{position:relative}
+  td.manual::after{content:"";position:absolute;top:1px;right:1px;
+                   border:3px solid transparent;border-top-color:var(--accent);
+                   border-right-color:var(--accent)}
+  td.missed{background:#fdf6e3;color:#8a6d1f}
+
+  .grid tfoot td{position:sticky;bottom:0;z-index:3;background:#fff;
+                 border-top:2px solid var(--line);font-weight:600}
+  .grid tfoot .c-name,.grid tfoot .c-emp{z-index:4}
+  td.fte{font-variant-numeric:tabular-nums;font-size:10.5px}
+  td.fte.ng{background:var(--err-bg);color:var(--err);font-weight:800}
+  td.fte.warn{background:#fdf6e3;color:#8a6d1f}
+  td.fte.closed{background:#eceff3;color:#9aa3ad;font-weight:400}
+  .req{display:block;font-size:9px;font-weight:400;color:var(--muted)}
+  td.fte.ng .req{color:var(--err)}
+
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;
+          color:var(--muted);font-size:11px;align-items:center}
+  .sw{display:inline-block;width:13px;height:13px;border:1px solid var(--line);
+      border-radius:3px;vertical-align:-2px;margin-right:4px}
+  .vio table{width:100%;font-size:11.5px;white-space:normal;border-collapse:collapse}
+  .vio th,.vio td{border:1px solid var(--line);text-align:left;padding:5px 8px}
+  .vio th{background:var(--head)}
+  .vio .num{text-align:right;font-variant-numeric:tabular-nums}
+  .vio .short{color:var(--err);font-weight:700}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sched-head">
+  <h1>{{ office.name }}</h1>
+  <span class="month">{{ schedule.month_label }}</span>
+  <span class="badge {{ schedule.status }}">{{ schedule.status_label }}</span>
+  <div class="meta">
+    求解 {{ schedule.solver_status }}／{{ schedule.solve_seconds }} 秒
+    ・目的関数 {{ "{:,}".format(schedule.objective) }}
+  </div>
+</div>
+
+{% if is_admin | default(false) %}
+<div class="bar">
+  <form method="post" action="/schedules/generate">
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <div class="field">
+      <label for="avg">平均利用者数</label>
+      <input id="avg" name="avg_expected_users" type="number" step="0.1"
+             min="0" max="1000" required style="width:96px"
+             value="{{ avg_expected_users | default('') }}">
+    </div>
+    <div class="field">
+      <label for="keep">手修正</label>
+      <select id="keep" name="keep_manual">
+        <option value="true">維持する</option>
+        <option value="false">破棄する</option>
+      </select>
+    </div>
+    <button class="btn primary" type="submit">シフトを再生成</button>
+  </form>
+
+  <form method="get" action="/schedules/{{ schedule.id }}/export.xlsx">
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <button class="btn" type="submit">勤務形態一覧表を出力</button>
+  </form>
+
+  <form method="post" action="/schedules/{{ schedule.id }}/publish">
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <button class="btn" type="submit"
+            {% if stats.violation_count %}disabled
+              title="人員配置基準の違反が解消されるまで確定できません"{% endif %}>
+      確定して公開</button>
+  </form>
+</div>
+{% endif %}
+
+{% if stats.violation_count %}
+  <div class="alert err">
+    <b>人員配置基準の違反が {{ stats.violation_count }} 件あります。</b>
+    このまま運用すると人員基準欠如減算（基本報酬の30％減算）の対象になり得ます。
+    <div class="kpis">
+      <span>希望休の反映 {{ stats.pref_off_ok }} / {{ stats.pref_off_total }} 件</span>
+      <span>希望勤務区分の反映 {{ stats.pref_pat_ok }} / {{ stats.pref_pat_total }} 件</span>
+      <span>職員間の勤務時間差 {{ stats.spread_hours }} 時間</span>
+    </div>
+  </div>
+{% else %}
+  <div class="alert ok">
+    <b>すべての日で人員配置基準を満たしています。</b>
+    <div class="kpis">
+      <span>希望休の反映 {{ stats.pref_off_ok }} / {{ stats.pref_off_total }} 件</span>
+      <span>希望勤務区分の反映 {{ stats.pref_pat_ok }} / {{ stats.pref_pat_total }} 件</span>
+      <span>職員間の勤務時間差 {{ stats.spread_hours }} 時間</span>
+    </div>
+  </div>
+{% endif %}
+
+<div class="scroll">
+<table class="grid">
+  <thead>
+    <tr>
+      <th class="c-name">職員</th>
+      <th class="c-emp">雇用</th>
+      {%- for d in days %}
+      <th class="day {{ d.cls }}">{{ d.n }}<span class="wd">{{ d.weekday }}</span></th>
+      {%- endfor %}
+      <th class="c-sum">合計</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {%- for g in groups %}
+    <tr class="grp">
+      <td class="c-name" colspan="{{ days | length + 3 }}">
+        {{ g.job_label }}（{{ g.rows | length }}名）</td>
+    </tr>
+      {%- for r in g.rows %}
+    <tr>
+      <td class="c-name" title="{{ r.name }}">{{ r.name }}</td>
+      <td class="c-emp">{{ r.employment }}</td>
+        {%- for c in r.cells %}
+      <td class="cell {{ 'rest' if c.is_rest }} {{ 'manual' if c.is_manual }} {{ 'missed' if c.pref_missed }}"
+          title="{{ r.name }}／{{ c.date }}{% if c.pref_missed %}／希望が反映できていません{% endif %}"
+      >{{ c.code }}</td>
+        {%- endfor %}
+      <td class="c-sum">{{ r.total_hours }}h</td>
+    </tr>
+      {%- endfor %}
+    {%- endfor %}
+  </tbody>
+
+  <tfoot>
+    {%- for f in fte_rows %}
+    <tr>
+      <td class="c-name">{{ f.job_label }}</td>
+      <td class="c-emp">常勤換算</td>
+      {%- for c in f.cells %}
+      <td class="fte {{ c.cls }}" title="必要 {{ c.required }}／実際 {{ c.actual }}">
+        {{ c.actual }}<span class="req">/{{ c.required }}</span>
+      </td>
+      {%- endfor %}
+      <td class="c-sum">—</td>
+    </tr>
+    {%- endfor %}
+  </tfoot>
+</table>
+</div>
+
+<div class="legend">
+  <span><span class="sw" style="background:#f0f2f5"></span>公休</span>
+  <span><span class="sw" style="background:#fdf6e3"></span>希望が未反映</span>
+  <span><span class="sw" style="background:var(--err-bg)"></span>人員配置基準の違反</span>
+  <span><span class="sw" style="background:#fff;border-color:var(--accent)"></span>右上の印は手動変更</span>
+  <span>｜</span>
+  {%- for p in patterns %}
+  <span><b>{{ p.code }}</b> {{ p.name }}{% if p.hours %}（{{ p.hours }}h）{% endif %}</span>
+  {%- endfor %}
+</div>
+
+{% if is_admin | default(false) and groups and pattern_options %}
+<div class="card" style="margin-top:14px">
+  <h2>シフトの手修正</h2>
+  <p class="muted">
+    修正すると、その場で人員配置基準を再判定します。
+    修正した明細は、再生成時に「手修正: 維持する」を選べば保持されます。
+  </p>
+  <form method="post" action="/schedules/{{ schedule.id }}/cell"
+        style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+    <div style="min-width:180px">
+      <label for="ms">職員</label>
+      <select id="ms" name="staff_id" required>
+        {%- for g in groups %}
+        <optgroup label="{{ g.job_label }}">
+          {%- for r in g.rows %}
+          <option value="{{ r.id }}">{{ r.name }}</option>
+          {%- endfor %}
+        </optgroup>
+        {%- endfor %}
+      </select>
+    </div>
+    <div style="min-width:150px">
+      <label for="md">日付</label>
+      <select id="md" name="target_date" required>
+        {%- for d in days %}
+        <option value="{{ d.date }}">{{ d.n }}日（{{ d.weekday }}）</option>
+        {%- endfor %}
+      </select>
+    </div>
+    <div style="min-width:150px">
+      <label for="mp">勤務区分</label>
+      <select id="mp" name="shift_pattern_id" required>
+        {%- for p in pattern_options %}
+        <option value="{{ p.shift_pattern_id }}">{{ p.name }}</option>
+        {%- endfor %}
+      </select>
+    </div>
+    <button class="btn primary" type="submit">適用</button>
+  </form>
+</div>
+{% endif %}
+
+{% if violations %}
+<div class="card vio" style="margin-top:14px">
+  <h2>人員配置基準の違反一覧（{{ violations | length }} 件）</h2>
+  <table>
+    <tr>
+      <th style="width:14%">日付</th><th style="width:18%">職種</th>
+      <th style="width:14%">判定区分</th>
+      <th class="num" style="width:10%">必要</th>
+      <th class="num" style="width:10%">実際</th>
+      <th class="num" style="width:10%">不足</th>
+      <th>対応の目安</th>
+    </tr>
+    {%- for v in violations %}
+    <tr>
+      <td>{{ v.date_label }}</td>
+      <td>{{ v.job_label }}</td>
+      <td>{{ v.kind_label }}</td>
+      <td class="num">{{ v.required }}</td>
+      <td class="num">{{ v.actual }}</td>
+      <td class="num short">{{ v.shortage }}</td>
+      <td>{{ v.hint }}</td>
+    </tr>
+    {%- endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

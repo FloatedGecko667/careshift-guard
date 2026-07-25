@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% set show_nav = false %}
+{% block title %}CareShift Guard{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:640px">
+  <h1>CareShift Guard</h1>
+  <p>介護事業所向け 人員配置基準チェック内蔵 シフト自動作成クラウド</p>
+  <p class="muted">
+    シフト作成の手間を減らすツールではありません。
+    人員基準欠如減算（基本報酬の30パーセント減算）という経営リスクを
+    未然に防ぐためのソリューションです。
+  </p>
+  <p style="margin-top:16px">
+    <a class="btn primary" href="/login">ログイン</a>
+  </p>
+  {% if app_env and app_env != 'production' %}
+    <p class="muted" style="margin-top:14px">
+      稼働環境: {{ app_env }}
+    </p>
+  {% endif %}
+</div>
+{% endblock %}

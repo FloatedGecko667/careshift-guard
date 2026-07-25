@@ -1,0 +1,2150 @@
+
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026年8月 シフト表｜CareShift Guard</title>
+<script src="/static/htmx.min.js" defer></script>
+<style>
+  :root{
+    --bg:#f6f7f9; --fg:#1f2937; --muted:#6b7280; --line:#d7dce3;
+    --head:#eef2f7; --accent:#1f6feb;
+    --err:#c0392b; --err-bg:#fdecea; --ok:#1e7e46; --ok-bg:#eaf6ee;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font-family:"Meiryo UI","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+       font-size:13px;line-height:1.6}
+  header.app{background:#fff;border-bottom:1px solid var(--line);
+             padding:10px 16px;display:flex;align-items:center;gap:14px}
+  header.app .brand{font-weight:700;font-size:15px}
+  header.app .brand span{color:var(--accent)}
+  header.app nav{display:flex;gap:12px;margin-left:12px}
+  header.app nav a{color:var(--fg);text-decoration:none;font-weight:600;font-size:12px}
+  header.app nav a:hover{color:var(--accent)}
+  header.app .right{margin-left:auto;color:var(--muted);font-size:11px;
+                    display:flex;align-items:center;gap:10px}
+  main{padding:16px;max-width:1600px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px;
+        margin-bottom:14px}
+  h1{font-size:17px;margin:0 0 12px}
+  h2{font-size:14px;margin:0 0 10px}
+  label{display:block;font-weight:600;font-size:12px;margin-bottom:4px}
+  input,select{border:1px solid var(--line);border-radius:6px;padding:7px 9px;
+               font-size:13px;font-family:inherit;width:100%}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  .btn{border:1px solid var(--line);background:#fff;color:var(--fg);
+       padding:7px 14px;border-radius:6px;font-size:12px;cursor:pointer;
+       font-weight:600;font-family:inherit}
+  .btn:hover{background:#f0f3f7}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .alert{border-radius:7px;padding:10px 13px;margin-bottom:12px;font-size:12px;
+         border-left:4px solid}
+  .alert.err{background:var(--err-bg);border-color:var(--err);color:var(--err)}
+  .alert.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+  .muted{color:var(--muted);font-size:11px}
+  .env-badge{background:#fff3cd;color:#8a6d1f;padding:2px 8px;border-radius:10px;
+             font-size:10px;font-weight:700}
+  table.list{border-collapse:collapse;width:100%;font-size:12px}
+  table.list th,table.list td{border:1px solid var(--line);padding:6px 8px;text-align:left}
+  table.list th{background:var(--head);font-weight:700}
+  .htmx-indicator{display:none;color:var(--muted)}
+  .htmx-request .htmx-indicator{display:inline}
+</style>
+
+<style>
+  .sched-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px}
+  .sched-head h1{font-size:17px;margin:0}
+  .sched-head .month{font-size:15px;font-weight:600;color:var(--accent)}
+  .badge{display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;
+         font-weight:600}
+  .badge.draft{background:#fff3cd;color:#8a6d1f}
+  .badge.published{background:var(--ok-bg);color:var(--ok)}
+  .sched-head .meta{margin-left:auto;color:var(--muted);font-size:11px;text-align:right}
+
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
+  .bar form{display:flex;gap:8px;align-items:flex-end;margin:0}
+  .bar .field{display:flex;flex-direction:column}
+  .bar .field label{font-size:10.5px;margin-bottom:2px;color:var(--muted)}
+  .bar input,.bar select{width:auto;padding:6px 8px;font-size:12px}
+  .kpis{display:flex;flex-wrap:wrap;gap:18px;margin-top:6px;color:var(--fg);
+        font-weight:400}
+
+  .scroll{overflow:auto;max-height:70vh;border:1px solid var(--line);
+          border-radius:8px;background:#fff}
+  .grid{border-collapse:separate;border-spacing:0;font-size:11.5px;white-space:nowrap}
+  .grid th,.grid td{border-right:1px solid var(--line);
+                    border-bottom:1px solid var(--line);
+                    padding:3px 5px;text-align:center}
+  .grid thead th{position:sticky;top:0;z-index:3;background:var(--head);
+                 font-weight:700;height:30px}
+  .c-name{position:sticky;left:0;z-index:2;background:#fff;text-align:left;
+          min-width:104px;max-width:104px;font-weight:600;overflow:hidden;
+          text-overflow:ellipsis}
+  .c-emp{position:sticky;left:104px;z-index:2;background:#fff;
+         min-width:52px;max-width:52px;color:var(--muted);font-size:10.5px}
+  .grid thead .c-name,.grid thead .c-emp{z-index:4;background:var(--head)}
+  .c-sum{min-width:52px;background:#fbfcfd;font-weight:600}
+  .day{min-width:26px;max-width:26px}
+  .day .wd{display:block;font-size:9px;font-weight:400;color:var(--muted)}
+  .day.sat{background:#eef4fb} .day.sun{background:#fbeef0}
+  .day.closed{background:#eceff3;color:#9aa3ad}
+
+  .grp td{background:#f2f5f9;text-align:left;font-weight:700;font-size:11px;
+          padding:4px 8px;color:#334155}
+  td.cell{font-weight:600}
+  td.rest{background:#f0f2f5;color:#9aa3ad;font-weight:400}
+  td.manual{position:relative}
+  td.manual::after{content:"";position:absolute;top:1px;right:1px;
+                   border:3px solid transparent;border-top-color:var(--accent);
+                   border-right-color:var(--accent)}
+  td.missed{background:#fdf6e3;color:#8a6d1f}
+
+  .grid tfoot td{position:sticky;bottom:0;z-index:3;background:#fff;
+                 border-top:2px solid var(--line);font-weight:600}
+  .grid tfoot .c-name,.grid tfoot .c-emp{z-index:4}
+  td.fte{font-variant-numeric:tabular-nums;font-size:10.5px}
+  td.fte.ng{background:var(--err-bg);color:var(--err);font-weight:800}
+  td.fte.warn{background:#fdf6e3;color:#8a6d1f}
+  td.fte.closed{background:#eceff3;color:#9aa3ad;font-weight:400}
+  .req{display:block;font-size:9px;font-weight:400;color:var(--muted)}
+  td.fte.ng .req{color:var(--err)}
+
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;
+          color:var(--muted);font-size:11px;align-items:center}
+  .sw{display:inline-block;width:13px;height:13px;border:1px solid var(--line);
+      border-radius:3px;vertical-align:-2px;margin-right:4px}
+  .vio table{width:100%;font-size:11.5px;white-space:normal;border-collapse:collapse}
+  .vio th,.vio td{border:1px solid var(--line);text-align:left;padding:5px 8px}
+  .vio th{background:var(--head)}
+  .vio .num{text-align:right;font-variant-numeric:tabular-nums}
+  .vio .short{color:var(--err);font-weight:700}
+</style>
+
+</head>
+<body>
+
+<header class="app">
+  <div class="brand">CareShift <span>Guard</span></div>
+  <nav>
+    <a href="/schedules">シフト表</a>
+    <a href="/masters">マスタ管理</a>
+    <a href="/requests">希望シフト</a>
+  </nav>
+  <div class="right">
+    
+    
+  </div>
+</header>
+
+<main>
+
+<div class="sched-head">
+  <h1>デイサービスさくら</h1>
+  <span class="month">2026年8月</span>
+  <span class="badge draft">作成中</span>
+  <div class="meta">
+    求解 FEASIBLE／10.02 秒
+    ・目的関数 112,328,120
+  </div>
+</div>
+
+
+
+
+  <div class="alert err">
+    <b>人員配置基準の違反が 24 件あります。</b>
+    このまま運用すると人員基準欠如減算（基本報酬の30％減算）の対象になり得ます。
+    <div class="kpis">
+      <span>希望休の反映 45 / 52 件</span>
+      <span>希望勤務区分の反映 17 / 23 件</span>
+      <span>職員間の勤務時間差 72.0 時間</span>
+    </div>
+  </div>
+
+
+<div class="scroll">
+<table class="grid">
+  <thead>
+    <tr>
+      <th class="c-name">職員</th>
+      <th class="c-emp">雇用</th>
+      <th class="day sat">1<span class="wd">土</span></th>
+      <th class="day closed">2<span class="wd">日</span></th>
+      <th class="day ">3<span class="wd">月</span></th>
+      <th class="day ">4<span class="wd">火</span></th>
+      <th class="day ">5<span class="wd">水</span></th>
+      <th class="day ">6<span class="wd">木</span></th>
+      <th class="day ">7<span class="wd">金</span></th>
+      <th class="day sat">8<span class="wd">土</span></th>
+      <th class="day closed">9<span class="wd">日</span></th>
+      <th class="day ">10<span class="wd">月</span></th>
+      <th class="day ">11<span class="wd">火</span></th>
+      <th class="day ">12<span class="wd">水</span></th>
+      <th class="day ">13<span class="wd">木</span></th>
+      <th class="day ">14<span class="wd">金</span></th>
+      <th class="day sat">15<span class="wd">土</span></th>
+      <th class="day closed">16<span class="wd">日</span></th>
+      <th class="day ">17<span class="wd">月</span></th>
+      <th class="day ">18<span class="wd">火</span></th>
+      <th class="day ">19<span class="wd">水</span></th>
+      <th class="day ">20<span class="wd">木</span></th>
+      <th class="day ">21<span class="wd">金</span></th>
+      <th class="day sat">22<span class="wd">土</span></th>
+      <th class="day closed">23<span class="wd">日</span></th>
+      <th class="day ">24<span class="wd">月</span></th>
+      <th class="day ">25<span class="wd">火</span></th>
+      <th class="day ">26<span class="wd">水</span></th>
+      <th class="day ">27<span class="wd">木</span></th>
+      <th class="day ">28<span class="wd">金</span></th>
+      <th class="day sat">29<span class="wd">土</span></th>
+      <th class="day closed">30<span class="wd">日</span></th>
+      <th class="day ">31<span class="wd">月</span></th>
+      <th class="c-sum">合計</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <tr class="grp">
+      <td class="c-name" colspan="34">
+        生活相談員（2名）</td>
+    </tr>
+    <tr>
+      <td class="c-name" title="職員10">職員10</td>
+      <td class="c-emp">非常勤</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-01"
+      >休</td>
+      <td class="cell rest  missed"
+          title="職員10／2026-08-02／希望が反映できていません"
+      >休</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-03"
+      >休</td>
+      <td class="cell   "
+          title="職員10／2026-08-04"
+      >遅</td>
+      <td class="cell   "
+          title="職員10／2026-08-05"
+      >日</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-06"
+      >休</td>
+      <td class="cell   "
+          title="職員10／2026-08-07"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-08"
+      >休</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-09"
+      >休</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-10"
+      >休</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-11"
+      >休</td>
+      <td class="cell   "
+          title="職員10／2026-08-12"
+      >遅</td>
+      <td class="cell   "
+          title="職員10／2026-08-13"
+      >遅</td>
+      <td class="cell   "
+          title="職員10／2026-08-14"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-15"
+      >休</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-16"
+      >休</td>
+      <td class="cell   "
+          title="職員10／2026-08-17"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-18"
+      >休</td>
+      <td class="cell   "
+          title="職員10／2026-08-19"
+      >遅</td>
+      <td class="cell   "
+          title="職員10／2026-08-20"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-21"
+      >休</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-22"
+      >休</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-23"
+      >休</td>
+      <td class="cell   "
+          title="職員10／2026-08-24"
+      >半</td>
+      <td class="cell   "
+          title="職員10／2026-08-25"
+      >遅</td>
+      <td class="cell   "
+          title="職員10／2026-08-26"
+      >半</td>
+      <td class="cell   "
+          title="職員10／2026-08-27"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-28"
+      >休</td>
+      <td class="cell   "
+          title="職員10／2026-08-29"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員10／2026-08-30"
+      >休</td>
+      <td class="cell   "
+          title="職員10／2026-08-31"
+      >遅</td>
+      <td class="c-sum">112.0h</td>
+    </tr>
+    <tr>
+      <td class="c-name" title="職員11">職員11</td>
+      <td class="c-emp">非常勤</td>
+      <td class="cell   "
+          title="職員11／2026-08-01"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-02"
+      >休</td>
+      <td class="cell   "
+          title="職員11／2026-08-03"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-04"
+      >休</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-05"
+      >休</td>
+      <td class="cell   "
+          title="職員11／2026-08-06"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-07"
+      >休</td>
+      <td class="cell   "
+          title="職員11／2026-08-08"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-09"
+      >休</td>
+      <td class="cell   "
+          title="職員11／2026-08-10"
+      >遅</td>
+      <td class="cell   "
+          title="職員11／2026-08-11"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-12"
+      >休</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-13"
+      >休</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-14"
+      >休</td>
+      <td class="cell   "
+          title="職員11／2026-08-15"
+      >早</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-16"
+      >休</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-17"
+      >休</td>
+      <td class="cell   "
+          title="職員11／2026-08-18"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-19"
+      >休</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-20"
+      >休</td>
+      <td class="cell   "
+          title="職員11／2026-08-21"
+      >遅</td>
+      <td class="cell   "
+          title="職員11／2026-08-22"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-23"
+      >休</td>
+      <td class="cell   "
+          title="職員11／2026-08-24"
+      >半</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-25"
+      >休</td>
+      <td class="cell   "
+          title="職員11／2026-08-26"
+      >半</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-27"
+      >休</td>
+      <td class="cell   "
+          title="職員11／2026-08-28"
+      >遅</td>
+      <td class="cell   "
+          title="職員11／2026-08-29"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-30"
+      >休</td>
+      <td class="cell rest  "
+          title="職員11／2026-08-31"
+      >休</td>
+      <td class="c-sum">104.0h</td>
+    </tr>
+    <tr class="grp">
+      <td class="c-name" colspan="34">
+        看護職員（2名）</td>
+    </tr>
+    <tr>
+      <td class="c-name" title="職員08">職員08</td>
+      <td class="c-emp">非常勤</td>
+      <td class="cell   "
+          title="職員08／2026-08-01"
+      >半</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-02"
+      >休</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-03"
+      >休</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-04"
+      >休</td>
+      <td class="cell   "
+          title="職員08／2026-08-05"
+      >遅</td>
+      <td class="cell   "
+          title="職員08／2026-08-06"
+      >半</td>
+      <td class="cell   "
+          title="職員08／2026-08-07"
+      >遅</td>
+      <td class="cell   "
+          title="職員08／2026-08-08"
+      >半</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-09"
+      >休</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-10"
+      >休</td>
+      <td class="cell   "
+          title="職員08／2026-08-11"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-12"
+      >休</td>
+      <td class="cell   "
+          title="職員08／2026-08-13"
+      >半</td>
+      <td class="cell   "
+          title="職員08／2026-08-14"
+      >遅</td>
+      <td class="cell   "
+          title="職員08／2026-08-15"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-16"
+      >休</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-17"
+      >休</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-18"
+      >休</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-19"
+      >休</td>
+      <td class="cell   "
+          title="職員08／2026-08-20"
+      >半</td>
+      <td class="cell   "
+          title="職員08／2026-08-21"
+      >遅</td>
+      <td class="cell   "
+          title="職員08／2026-08-22"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-23"
+      >休</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-24"
+      >休</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-25"
+      >休</td>
+      <td class="cell   "
+          title="職員08／2026-08-26"
+      >早</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-27"
+      >休</td>
+      <td class="cell   "
+          title="職員08／2026-08-28"
+      >遅</td>
+      <td class="cell   "
+          title="職員08／2026-08-29"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員08／2026-08-30"
+      >休</td>
+      <td class="cell   "
+          title="職員08／2026-08-31"
+      >遅</td>
+      <td class="c-sum">108.0h</td>
+    </tr>
+    <tr>
+      <td class="c-name" title="職員09">職員09</td>
+      <td class="c-emp">常勤</td>
+      <td class="cell   "
+          title="職員09／2026-08-01"
+      >半</td>
+      <td class="cell rest  "
+          title="職員09／2026-08-02"
+      >休</td>
+      <td class="cell   "
+          title="職員09／2026-08-03"
+      >遅</td>
+      <td class="cell   "
+          title="職員09／2026-08-04"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員09／2026-08-05"
+      >休</td>
+      <td class="cell   "
+          title="職員09／2026-08-06"
+      >半</td>
+      <td class="cell rest  "
+          title="職員09／2026-08-07"
+      >休</td>
+      <td class="cell   "
+          title="職員09／2026-08-08"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員09／2026-08-09"
+      >休</td>
+      <td class="cell   "
+          title="職員09／2026-08-10"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員09／2026-08-11"
+      >休</td>
+      <td class="cell   "
+          title="職員09／2026-08-12"
+      >遅</td>
+      <td class="cell   "
+          title="職員09／2026-08-13"
+      >遅</td>
+      <td class="cell   "
+          title="職員09／2026-08-14"
+      >半</td>
+      <td class="cell rest  "
+          title="職員09／2026-08-15"
+      >休</td>
+      <td class="cell rest  "
+          title="職員09／2026-08-16"
+      >休</td>
+      <td class="cell   "
+          title="職員09／2026-08-17"
+      >遅</td>
+      <td class="cell   "
+          title="職員09／2026-08-18"
+      >遅</td>
+      <td class="cell   missed"
+          title="職員09／2026-08-19／希望が反映できていません"
+      >遅</td>
+      <td class="cell   "
+          title="職員09／2026-08-20"
+      >半</td>
+      <td class="cell   "
+          title="職員09／2026-08-21"
+      >半</td>
+      <td class="cell rest  "
+          title="職員09／2026-08-22"
+      >休</td>
+      <td class="cell rest  missed"
+          title="職員09／2026-08-23／希望が反映できていません"
+      >休</td>
+      <td class="cell   "
+          title="職員09／2026-08-24"
+      >遅</td>
+      <td class="cell   "
+          title="職員09／2026-08-25"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員09／2026-08-26"
+      >休</td>
+      <td class="cell   missed"
+          title="職員09／2026-08-27／希望が反映できていません"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員09／2026-08-28"
+      >休</td>
+      <td class="cell   "
+          title="職員09／2026-08-29"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員09／2026-08-30"
+      >休</td>
+      <td class="cell   "
+          title="職員09／2026-08-31"
+      >半</td>
+      <td class="c-sum">128.0h</td>
+    </tr>
+    <tr class="grp">
+      <td class="c-name" colspan="34">
+        介護職員（7名）</td>
+    </tr>
+    <tr>
+      <td class="c-name" title="職員01">職員01</td>
+      <td class="c-emp">常勤</td>
+      <td class="cell   "
+          title="職員01／2026-08-01"
+      >日</td>
+      <td class="cell rest  "
+          title="職員01／2026-08-02"
+      >休</td>
+      <td class="cell   "
+          title="職員01／2026-08-03"
+      >遅</td>
+      <td class="cell   "
+          title="職員01／2026-08-04"
+      >遅</td>
+      <td class="cell   "
+          title="職員01／2026-08-05"
+      >遅</td>
+      <td class="cell   "
+          title="職員01／2026-08-06"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員01／2026-08-07"
+      >休</td>
+      <td class="cell   missed"
+          title="職員01／2026-08-08／希望が反映できていません"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員01／2026-08-09"
+      >休</td>
+      <td class="cell   "
+          title="職員01／2026-08-10"
+      >遅</td>
+      <td class="cell   "
+          title="職員01／2026-08-11"
+      >遅</td>
+      <td class="cell   "
+          title="職員01／2026-08-12"
+      >遅</td>
+      <td class="cell   "
+          title="職員01／2026-08-13"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員01／2026-08-14"
+      >休</td>
+      <td class="cell   "
+          title="職員01／2026-08-15"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員01／2026-08-16"
+      >休</td>
+      <td class="cell rest  "
+          title="職員01／2026-08-17"
+      >休</td>
+      <td class="cell   "
+          title="職員01／2026-08-18"
+      >遅</td>
+      <td class="cell   "
+          title="職員01／2026-08-19"
+      >遅</td>
+      <td class="cell   "
+          title="職員01／2026-08-20"
+      >遅</td>
+      <td class="cell   missed"
+          title="職員01／2026-08-21／希望が反映できていません"
+      >遅</td>
+      <td class="cell   "
+          title="職員01／2026-08-22"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員01／2026-08-23"
+      >休</td>
+      <td class="cell rest  "
+          title="職員01／2026-08-24"
+      >休</td>
+      <td class="cell   "
+          title="職員01／2026-08-25"
+      >早</td>
+      <td class="cell   "
+          title="職員01／2026-08-26"
+      >遅</td>
+      <td class="cell   "
+          title="職員01／2026-08-27"
+      >遅</td>
+      <td class="cell   "
+          title="職員01／2026-08-28"
+      >遅</td>
+      <td class="cell   "
+          title="職員01／2026-08-29"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員01／2026-08-30"
+      >休</td>
+      <td class="cell   "
+          title="職員01／2026-08-31"
+      >遅</td>
+      <td class="c-sum">176.0h</td>
+    </tr>
+    <tr>
+      <td class="c-name" title="職員02">職員02</td>
+      <td class="c-emp">非常勤</td>
+      <td class="cell   "
+          title="職員02／2026-08-01"
+      >半</td>
+      <td class="cell rest  missed"
+          title="職員02／2026-08-02／希望が反映できていません"
+      >休</td>
+      <td class="cell rest  "
+          title="職員02／2026-08-03"
+      >休</td>
+      <td class="cell   "
+          title="職員02／2026-08-04"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員02／2026-08-05"
+      >休</td>
+      <td class="cell   "
+          title="職員02／2026-08-06"
+      >遅</td>
+      <td class="cell   "
+          title="職員02／2026-08-07"
+      >半</td>
+      <td class="cell   "
+          title="職員02／2026-08-08"
+      >半</td>
+      <td class="cell rest  "
+          title="職員02／2026-08-09"
+      >休</td>
+      <td class="cell   "
+          title="職員02／2026-08-10"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員02／2026-08-11"
+      >休</td>
+      <td class="cell   "
+          title="職員02／2026-08-12"
+      >半</td>
+      <td class="cell rest  "
+          title="職員02／2026-08-13"
+      >休</td>
+      <td class="cell   "
+          title="職員02／2026-08-14"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員02／2026-08-15"
+      >休</td>
+      <td class="cell rest  "
+          title="職員02／2026-08-16"
+      >休</td>
+      <td class="cell   "
+          title="職員02／2026-08-17"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員02／2026-08-18"
+      >休</td>
+      <td class="cell   "
+          title="職員02／2026-08-19"
+      >日</td>
+      <td class="cell rest  "
+          title="職員02／2026-08-20"
+      >休</td>
+      <td class="cell   "
+          title="職員02／2026-08-21"
+      >遅</td>
+      <td class="cell   "
+          title="職員02／2026-08-22"
+      >半</td>
+      <td class="cell rest  "
+          title="職員02／2026-08-23"
+      >休</td>
+      <td class="cell   "
+          title="職員02／2026-08-24"
+      >遅</td>
+      <td class="cell   "
+          title="職員02／2026-08-25"
+      >半</td>
+      <td class="cell rest  "
+          title="職員02／2026-08-26"
+      >休</td>
+      <td class="cell rest  "
+          title="職員02／2026-08-27"
+      >休</td>
+      <td class="cell   "
+          title="職員02／2026-08-28"
+      >遅</td>
+      <td class="cell   "
+          title="職員02／2026-08-29"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員02／2026-08-30"
+      >休</td>
+      <td class="cell   "
+          title="職員02／2026-08-31"
+      >遅</td>
+      <td class="c-sum">112.0h</td>
+    </tr>
+    <tr>
+      <td class="c-name" title="職員03">職員03</td>
+      <td class="c-emp">常勤</td>
+      <td class="cell   "
+          title="職員03／2026-08-01"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員03／2026-08-02"
+      >休</td>
+      <td class="cell rest  "
+          title="職員03／2026-08-03"
+      >休</td>
+      <td class="cell   "
+          title="職員03／2026-08-04"
+      >遅</td>
+      <td class="cell   "
+          title="職員03／2026-08-05"
+      >遅</td>
+      <td class="cell   "
+          title="職員03／2026-08-06"
+      >遅</td>
+      <td class="cell   "
+          title="職員03／2026-08-07"
+      >遅</td>
+      <td class="cell   missed"
+          title="職員03／2026-08-08／希望が反映できていません"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員03／2026-08-09"
+      >休</td>
+      <td class="cell rest  "
+          title="職員03／2026-08-10"
+      >休</td>
+      <td class="cell   "
+          title="職員03／2026-08-11"
+      >遅</td>
+      <td class="cell   "
+          title="職員03／2026-08-12"
+      >遅</td>
+      <td class="cell   "
+          title="職員03／2026-08-13"
+      >遅</td>
+      <td class="cell   "
+          title="職員03／2026-08-14"
+      >遅</td>
+      <td class="cell   "
+          title="職員03／2026-08-15"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員03／2026-08-16"
+      >休</td>
+      <td class="cell   "
+          title="職員03／2026-08-17"
+      >遅</td>
+      <td class="cell   "
+          title="職員03／2026-08-18"
+      >遅</td>
+      <td class="cell   "
+          title="職員03／2026-08-19"
+      >遅</td>
+      <td class="cell   "
+          title="職員03／2026-08-20"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員03／2026-08-21"
+      >休</td>
+      <td class="cell   "
+          title="職員03／2026-08-22"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員03／2026-08-23"
+      >休</td>
+      <td class="cell   "
+          title="職員03／2026-08-24"
+      >遅</td>
+      <td class="cell   "
+          title="職員03／2026-08-25"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員03／2026-08-26"
+      >休</td>
+      <td class="cell   "
+          title="職員03／2026-08-27"
+      >遅</td>
+      <td class="cell   "
+          title="職員03／2026-08-28"
+      >遅</td>
+      <td class="cell   "
+          title="職員03／2026-08-29"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員03／2026-08-30"
+      >休</td>
+      <td class="cell   "
+          title="職員03／2026-08-31"
+      >早</td>
+      <td class="c-sum">176.0h</td>
+    </tr>
+    <tr>
+      <td class="c-name" title="職員04">職員04</td>
+      <td class="c-emp">非常勤</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-01"
+      >休</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-02"
+      >休</td>
+      <td class="cell   "
+          title="職員04／2026-08-03"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-04"
+      >休</td>
+      <td class="cell   "
+          title="職員04／2026-08-05"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-06"
+      >休</td>
+      <td class="cell   "
+          title="職員04／2026-08-07"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-08"
+      >休</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-09"
+      >休</td>
+      <td class="cell   "
+          title="職員04／2026-08-10"
+      >半</td>
+      <td class="cell   "
+          title="職員04／2026-08-11"
+      >遅</td>
+      <td class="cell   "
+          title="職員04／2026-08-12"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-13"
+      >休</td>
+      <td class="cell   "
+          title="職員04／2026-08-14"
+      >半</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-15"
+      >休</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-16"
+      >休</td>
+      <td class="cell   "
+          title="職員04／2026-08-17"
+      >遅</td>
+      <td class="cell   "
+          title="職員04／2026-08-18"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-19"
+      >休</td>
+      <td class="cell   "
+          title="職員04／2026-08-20"
+      >日</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-21"
+      >休</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-22"
+      >休</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-23"
+      >休</td>
+      <td class="cell   "
+          title="職員04／2026-08-24"
+      >遅</td>
+      <td class="cell   "
+          title="職員04／2026-08-25"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-26"
+      >休</td>
+      <td class="cell   "
+          title="職員04／2026-08-27"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-28"
+      >休</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-29"
+      >休</td>
+      <td class="cell rest  "
+          title="職員04／2026-08-30"
+      >休</td>
+      <td class="cell   "
+          title="職員04／2026-08-31"
+      >遅</td>
+      <td class="c-sum">104.0h</td>
+    </tr>
+    <tr>
+      <td class="c-name" title="職員05">職員05</td>
+      <td class="c-emp">常勤</td>
+      <td class="cell   "
+          title="職員05／2026-08-01"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員05／2026-08-02"
+      >休</td>
+      <td class="cell   "
+          title="職員05／2026-08-03"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員05／2026-08-04"
+      >休</td>
+      <td class="cell   "
+          title="職員05／2026-08-05"
+      >遅</td>
+      <td class="cell   "
+          title="職員05／2026-08-06"
+      >遅</td>
+      <td class="cell   "
+          title="職員05／2026-08-07"
+      >遅</td>
+      <td class="cell   "
+          title="職員05／2026-08-08"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員05／2026-08-09"
+      >休</td>
+      <td class="cell   "
+          title="職員05／2026-08-10"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員05／2026-08-11"
+      >休</td>
+      <td class="cell   "
+          title="職員05／2026-08-12"
+      >遅</td>
+      <td class="cell   "
+          title="職員05／2026-08-13"
+      >遅</td>
+      <td class="cell   "
+          title="職員05／2026-08-14"
+      >遅</td>
+      <td class="cell   "
+          title="職員05／2026-08-15"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員05／2026-08-16"
+      >休</td>
+      <td class="cell   "
+          title="職員05／2026-08-17"
+      >遅</td>
+      <td class="cell   "
+          title="職員05／2026-08-18"
+      >遅</td>
+      <td class="cell   "
+          title="職員05／2026-08-19"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員05／2026-08-20"
+      >休</td>
+      <td class="cell   "
+          title="職員05／2026-08-21"
+      >遅</td>
+      <td class="cell   "
+          title="職員05／2026-08-22"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員05／2026-08-23"
+      >休</td>
+      <td class="cell   missed"
+          title="職員05／2026-08-24／希望が反映できていません"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員05／2026-08-25"
+      >休</td>
+      <td class="cell   "
+          title="職員05／2026-08-26"
+      >遅</td>
+      <td class="cell   "
+          title="職員05／2026-08-27"
+      >遅</td>
+      <td class="cell   "
+          title="職員05／2026-08-28"
+      >遅</td>
+      <td class="cell   "
+          title="職員05／2026-08-29"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員05／2026-08-30"
+      >休</td>
+      <td class="cell   "
+          title="職員05／2026-08-31"
+      >遅</td>
+      <td class="c-sum">176.0h</td>
+    </tr>
+    <tr>
+      <td class="c-name" title="職員06">職員06</td>
+      <td class="c-emp">常勤</td>
+      <td class="cell   "
+          title="職員06／2026-08-01"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員06／2026-08-02"
+      >休</td>
+      <td class="cell   "
+          title="職員06／2026-08-03"
+      >遅</td>
+      <td class="cell   "
+          title="職員06／2026-08-04"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員06／2026-08-05"
+      >休</td>
+      <td class="cell   "
+          title="職員06／2026-08-06"
+      >遅</td>
+      <td class="cell   "
+          title="職員06／2026-08-07"
+      >遅</td>
+      <td class="cell   "
+          title="職員06／2026-08-08"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員06／2026-08-09"
+      >休</td>
+      <td class="cell   "
+          title="職員06／2026-08-10"
+      >遅</td>
+      <td class="cell   "
+          title="職員06／2026-08-11"
+      >遅</td>
+      <td class="cell   "
+          title="職員06／2026-08-12"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員06／2026-08-13"
+      >休</td>
+      <td class="cell   "
+          title="職員06／2026-08-14"
+      >遅</td>
+      <td class="cell   "
+          title="職員06／2026-08-15"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員06／2026-08-16"
+      >休</td>
+      <td class="cell rest  "
+          title="職員06／2026-08-17"
+      >休</td>
+      <td class="cell   "
+          title="職員06／2026-08-18"
+      >遅</td>
+      <td class="cell   "
+          title="職員06／2026-08-19"
+      >遅</td>
+      <td class="cell   "
+          title="職員06／2026-08-20"
+      >遅</td>
+      <td class="cell   missed"
+          title="職員06／2026-08-21／希望が反映できていません"
+      >遅</td>
+      <td class="cell   "
+          title="職員06／2026-08-22"
+      >遅</td>
+      <td class="cell rest  missed"
+          title="職員06／2026-08-23／希望が反映できていません"
+      >休</td>
+      <td class="cell   "
+          title="職員06／2026-08-24"
+      >遅</td>
+      <td class="cell   "
+          title="職員06／2026-08-25"
+      >遅</td>
+      <td class="cell   "
+          title="職員06／2026-08-26"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員06／2026-08-27"
+      >休</td>
+      <td class="cell   "
+          title="職員06／2026-08-28"
+      >遅</td>
+      <td class="cell   "
+          title="職員06／2026-08-29"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員06／2026-08-30"
+      >休</td>
+      <td class="cell   "
+          title="職員06／2026-08-31"
+      >遅</td>
+      <td class="c-sum">176.0h</td>
+    </tr>
+    <tr>
+      <td class="c-name" title="職員07">職員07</td>
+      <td class="c-emp">非常勤</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-01"
+      >休</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-02"
+      >休</td>
+      <td class="cell   "
+          title="職員07／2026-08-03"
+      >遅</td>
+      <td class="cell   "
+          title="職員07／2026-08-04"
+      >遅</td>
+      <td class="cell   "
+          title="職員07／2026-08-05"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-06"
+      >休</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-07"
+      >休</td>
+      <td class="cell   "
+          title="職員07／2026-08-08"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-09"
+      >休</td>
+      <td class="cell   "
+          title="職員07／2026-08-10"
+      >遅</td>
+      <td class="cell   "
+          title="職員07／2026-08-11"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-12"
+      >休</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-13"
+      >休</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-14"
+      >休</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-15"
+      >休</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-16"
+      >休</td>
+      <td class="cell   "
+          title="職員07／2026-08-17"
+      >遅</td>
+      <td class="cell   "
+          title="職員07／2026-08-18"
+      >半</td>
+      <td class="cell   "
+          title="職員07／2026-08-19"
+      >半</td>
+      <td class="cell   "
+          title="職員07／2026-08-20"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-21"
+      >休</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-22"
+      >休</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-23"
+      >休</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-24"
+      >休</td>
+      <td class="cell   "
+          title="職員07／2026-08-25"
+      >遅</td>
+      <td class="cell   "
+          title="職員07／2026-08-26"
+      >早</td>
+      <td class="cell   "
+          title="職員07／2026-08-27"
+      >半</td>
+      <td class="cell   "
+          title="職員07／2026-08-28"
+      >半</td>
+      <td class="cell   "
+          title="職員07／2026-08-29"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-30"
+      >休</td>
+      <td class="cell rest  "
+          title="職員07／2026-08-31"
+      >休</td>
+      <td class="c-sum">104.0h</td>
+    </tr>
+    <tr class="grp">
+      <td class="c-name" colspan="34">
+        機能訓練指導員（2名）</td>
+    </tr>
+    <tr>
+      <td class="c-name" title="職員12">職員12</td>
+      <td class="c-emp">非常勤</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-01"
+      >休</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-02"
+      >休</td>
+      <td class="cell   "
+          title="職員12／2026-08-03"
+      >遅</td>
+      <td class="cell   "
+          title="職員12／2026-08-04"
+      >遅</td>
+      <td class="cell   "
+          title="職員12／2026-08-05"
+      >半</td>
+      <td class="cell   "
+          title="職員12／2026-08-06"
+      >半</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-07"
+      >休</td>
+      <td class="cell   "
+          title="職員12／2026-08-08"
+      >日</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-09"
+      >休</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-10"
+      >休</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-11"
+      >休</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-12"
+      >休</td>
+      <td class="cell   "
+          title="職員12／2026-08-13"
+      >遅</td>
+      <td class="cell   "
+          title="職員12／2026-08-14"
+      >遅</td>
+      <td class="cell   "
+          title="職員12／2026-08-15"
+      >遅</td>
+      <td class="cell rest  missed"
+          title="職員12／2026-08-16／希望が反映できていません"
+      >休</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-17"
+      >休</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-18"
+      >休</td>
+      <td class="cell   "
+          title="職員12／2026-08-19"
+      >遅</td>
+      <td class="cell   "
+          title="職員12／2026-08-20"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-21"
+      >休</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-22"
+      >休</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-23"
+      >休</td>
+      <td class="cell   "
+          title="職員12／2026-08-24"
+      >遅</td>
+      <td class="cell   "
+          title="職員12／2026-08-25"
+      >遅</td>
+      <td class="cell   "
+          title="職員12／2026-08-26"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-27"
+      >休</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-28"
+      >休</td>
+      <td class="cell   "
+          title="職員12／2026-08-29"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-30"
+      >休</td>
+      <td class="cell rest  "
+          title="職員12／2026-08-31"
+      >休</td>
+      <td class="c-sum">104.0h</td>
+    </tr>
+    <tr>
+      <td class="c-name" title="職員13">職員13</td>
+      <td class="c-emp">非常勤</td>
+      <td class="cell   "
+          title="職員13／2026-08-01"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-02"
+      >休</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-03"
+      >休</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-04"
+      >休</td>
+      <td class="cell   "
+          title="職員13／2026-08-05"
+      >半</td>
+      <td class="cell   "
+          title="職員13／2026-08-06"
+      >半</td>
+      <td class="cell   "
+          title="職員13／2026-08-07"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-08"
+      >休</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-09"
+      >休</td>
+      <td class="cell   "
+          title="職員13／2026-08-10"
+      >遅</td>
+      <td class="cell   "
+          title="職員13／2026-08-11"
+      >遅</td>
+      <td class="cell   "
+          title="職員13／2026-08-12"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-13"
+      >休</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-14"
+      >休</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-15"
+      >休</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-16"
+      >休</td>
+      <td class="cell   "
+          title="職員13／2026-08-17"
+      >早</td>
+      <td class="cell   "
+          title="職員13／2026-08-18"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-19"
+      >休</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-20"
+      >休</td>
+      <td class="cell   "
+          title="職員13／2026-08-21"
+      >遅</td>
+      <td class="cell   "
+          title="職員13／2026-08-22"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-23"
+      >休</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-24"
+      >休</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-25"
+      >休</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-26"
+      >休</td>
+      <td class="cell   "
+          title="職員13／2026-08-27"
+      >遅</td>
+      <td class="cell   "
+          title="職員13／2026-08-28"
+      >遅</td>
+      <td class="cell rest  "
+          title="職員13／2026-08-29"
+      >休</td>
+      <td class="cell rest  missed"
+          title="職員13／2026-08-30／希望が反映できていません"
+      >休</td>
+      <td class="cell   "
+          title="職員13／2026-08-31"
+      >遅</td>
+      <td class="c-sum">104.0h</td>
+    </tr>
+  </tbody>
+
+  <tfoot>
+    <tr>
+      <td class="c-name">生活相談員</td>
+      <td class="c-emp">常勤換算</td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte " title="必要 1.0／実際 2.0">
+        2.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="c-sum">—</td>
+    </tr>
+    <tr>
+      <td class="c-name">看護職員</td>
+      <td class="c-emp">常勤換算</td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte " title="必要 1.0／実際 1.5">
+        1.5<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte " title="必要 1.0／実際 1.5">
+        1.5<span class="req">/1.0</span>
+      </td>
+      <td class="fte " title="必要 1.0／実際 1.5">
+        1.5<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte " title="必要 1.0／実際 1.5">
+        1.5<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte " title="必要 1.0／実際 2.0">
+        2.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte " title="必要 1.0／実際 1.5">
+        1.5<span class="req">/1.0</span>
+      </td>
+      <td class="c-sum">—</td>
+    </tr>
+    <tr>
+      <td class="c-name">介護職員</td>
+      <td class="c-emp">常勤換算</td>
+      <td class="fte ng" title="必要 5.6／実際 4.5">
+        4.5<span class="req">/5.6</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.0">
+        5.0<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.0">
+        5.0<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.0">
+        5.0<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.0">
+        5.0<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 4.5">
+        4.5<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.5">
+        5.5<span class="req">/5.6</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.5">
+        5.5<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.0">
+        5.0<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.5">
+        5.5<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 3.0">
+        3.0<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 4.5">
+        4.5<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 4.0">
+        4.0<span class="req">/5.6</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.0">
+        5.0<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.5">
+        5.5<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.5">
+        5.5<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.0">
+        5.0<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 4.0">
+        4.0<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 4.5">
+        4.5<span class="req">/5.6</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.0">
+        5.0<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.5">
+        5.5<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 4.0">
+        4.0<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 4.5">
+        4.5<span class="req">/5.6</span>
+      </td>
+      <td class="fte ng" title="必要 5.6／実際 5.5">
+        5.5<span class="req">/5.6</span>
+      </td>
+      <td class="fte " title="必要 5.6／実際 6.0">
+        6.0<span class="req">/5.6</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte " title="必要 5.6／実際 6.0">
+        6.0<span class="req">/5.6</span>
+      </td>
+      <td class="c-sum">—</td>
+    </tr>
+    <tr>
+      <td class="c-name">機能訓練指導員</td>
+      <td class="c-emp">常勤換算</td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="fte closed" title="必要 0.0／実際 0.0">
+        0.0<span class="req">/0.0</span>
+      </td>
+      <td class="fte warn" title="必要 1.0／実際 1.0">
+        1.0<span class="req">/1.0</span>
+      </td>
+      <td class="c-sum">—</td>
+    </tr>
+  </tfoot>
+</table>
+</div>
+
+<div class="legend">
+  <span><span class="sw" style="background:#f0f2f5"></span>公休</span>
+  <span><span class="sw" style="background:#fdf6e3"></span>希望が未反映</span>
+  <span><span class="sw" style="background:var(--err-bg)"></span>人員配置基準の違反</span>
+  <span><span class="sw" style="background:#fff;border-color:var(--accent)"></span>右上の印は手動変更</span>
+  <span>｜</span>
+  <span><b>休</b> 公休</span>
+  <span><b>早</b> 早番（8.0h）</span>
+  <span><b>日</b> 日勤（8.0h）</span>
+  <span><b>遅</b> 遅番（8.0h）</span>
+  <span><b>半</b> 半日（4.0h）</span>
+</div>
+
+
+
+
+<div class="card vio" style="margin-top:14px">
+  <h2>人員配置基準の違反一覧（24 件）</h2>
+  <table>
+    <tr>
+      <th style="width:14%">日付</th><th style="width:18%">職種</th>
+      <th style="width:14%">判定区分</th>
+      <th class="num" style="width:10%">必要</th>
+      <th class="num" style="width:10%">実際</th>
+      <th class="num" style="width:10%">不足</th>
+      <th>対応の目安</th>
+    </tr>
+    <tr>
+      <td>8/1（土）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">4.5</td>
+      <td class="num short">1.1</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/3（月）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.0</td>
+      <td class="num short">0.6</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/4（火）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.0</td>
+      <td class="num short">0.6</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/5（水）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.0</td>
+      <td class="num short">0.6</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/6（木）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.0</td>
+      <td class="num short">0.6</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/7（金）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">4.5</td>
+      <td class="num short">1.1</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/8（土）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.5</td>
+      <td class="num short">0.1</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/10（月）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.5</td>
+      <td class="num short">0.1</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/11（火）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.0</td>
+      <td class="num short">0.6</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/12（水）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.5</td>
+      <td class="num short">0.1</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/13（木）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">3.0</td>
+      <td class="num short">2.6</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/14（金）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">4.5</td>
+      <td class="num short">1.1</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/15（土）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">4.0</td>
+      <td class="num short">1.6</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/17（月）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.0</td>
+      <td class="num short">0.6</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/18（火）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.5</td>
+      <td class="num short">0.1</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/19（水）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.5</td>
+      <td class="num short">0.1</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/20（木）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.0</td>
+      <td class="num short">0.6</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/21（金）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">4.0</td>
+      <td class="num short">1.6</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/22（土）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">4.5</td>
+      <td class="num short">1.1</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/24（月）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.0</td>
+      <td class="num short">0.6</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/25（火）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.5</td>
+      <td class="num short">0.1</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/26（水）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">4.0</td>
+      <td class="num short">1.6</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/27（木）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">4.5</td>
+      <td class="num short">1.1</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+    <tr>
+      <td>8/28（金）</td>
+      <td>介護職員</td>
+      <td>常勤換算</td>
+      <td class="num">5.6</td>
+      <td class="num">5.5</td>
+      <td class="num short">0.1</td>
+      <td>応援職員の手配、または当日の利用者受入数の調整</td>
+    </tr>
+  </table>
+</div>
+
+
+</main>
+</body>
+</html>

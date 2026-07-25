@@ -1,0 +1,95 @@
+{#
+  共通レイアウト。
+
+  htmx は自前で配信する（/static/htmx.min.js）。外部CDNに依存すると、
+  他社の停止でアプリが壊れるうえ、閉域網の顧客環境では動かない。
+  導入手順は `make vendor`。
+
+  htmx は任意依存である。読み込まれていなくても、すべての操作は
+  通常のフォーム送信で完結する。htmx がある場合のみ、希望シフト画面で
+  該当行だけを部分更新する（段階的強化）。
+#}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}CareShift Guard{% endblock %}</title>
+<script src="/static/htmx.min.js" defer></script>
+<style>
+  :root{
+    --bg:#f6f7f9; --fg:#1f2937; --muted:#6b7280; --line:#d7dce3;
+    --head:#eef2f7; --accent:#1f6feb;
+    --err:#c0392b; --err-bg:#fdecea; --ok:#1e7e46; --ok-bg:#eaf6ee;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font-family:"Meiryo UI","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+       font-size:13px;line-height:1.6}
+  header.app{background:#fff;border-bottom:1px solid var(--line);
+             padding:10px 16px;display:flex;align-items:center;gap:14px}
+  header.app .brand{font-weight:700;font-size:15px}
+  header.app .brand span{color:var(--accent)}
+  header.app nav{display:flex;gap:12px;margin-left:12px}
+  header.app nav a{color:var(--fg);text-decoration:none;font-weight:600;font-size:12px}
+  header.app nav a:hover{color:var(--accent)}
+  header.app .right{margin-left:auto;color:var(--muted);font-size:11px;
+                    display:flex;align-items:center;gap:10px}
+  main{padding:16px;max-width:1600px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px;
+        margin-bottom:14px}
+  h1{font-size:17px;margin:0 0 12px}
+  h2{font-size:14px;margin:0 0 10px}
+  label{display:block;font-weight:600;font-size:12px;margin-bottom:4px}
+  input,select{border:1px solid var(--line);border-radius:6px;padding:7px 9px;
+               font-size:13px;font-family:inherit;width:100%}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  .btn{border:1px solid var(--line);background:#fff;color:var(--fg);
+       padding:7px 14px;border-radius:6px;font-size:12px;cursor:pointer;
+       font-weight:600;font-family:inherit}
+  .btn:hover{background:#f0f3f7}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .alert{border-radius:7px;padding:10px 13px;margin-bottom:12px;font-size:12px;
+         border-left:4px solid}
+  .alert.err{background:var(--err-bg);border-color:var(--err);color:var(--err)}
+  .alert.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+  .muted{color:var(--muted);font-size:11px}
+  .env-badge{background:#fff3cd;color:#8a6d1f;padding:2px 8px;border-radius:10px;
+             font-size:10px;font-weight:700}
+  table.list{border-collapse:collapse;width:100%;font-size:12px}
+  table.list th,table.list td{border:1px solid var(--line);padding:6px 8px;text-align:left}
+  table.list th{background:var(--head);font-weight:700}
+  .htmx-indicator{display:none;color:var(--muted)}
+  .htmx-request .htmx-indicator{display:inline}
+</style>
+{% block head %}{% endblock %}
+</head>
+<body>
+{% if show_nav | default(true) %}
+<header class="app">
+  <div class="brand">CareShift <span>Guard</span></div>
+  <nav>
+    <a href="/schedules">シフト表</a>
+    <a href="/masters">マスタ管理</a>
+    <a href="/requests">希望シフト</a>
+  </nav>
+  <div class="right">
+    {% if app_env and app_env != 'production' %}
+      <span class="env-badge">{{ app_env }}</span>
+    {% endif %}
+    {% if current_user %}
+      <span>{{ current_user.email }}</span>
+      <form method="post" action="/logout" style="margin:0">
+        <button class="btn" type="submit">ログアウト</button>
+      </form>
+    {% endif %}
+  </div>
+</header>
+{% endif %}
+<main>
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

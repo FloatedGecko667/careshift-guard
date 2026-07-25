@@ -1,0 +1,71 @@
+[project]
+name = "careshift-guard"
+version = "0.1.0"
+description = "介護事業所向け 人員配置基準チェック内蔵 シフト自動作成クラウド"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "曽我 幸太郎" }]
+
+# 依存はすべて MIT / BSD / Apache 2.0 系に限定している。
+# GPL 系・SSPL 系は、SaaS として第三者に提供する際の
+# ライセンス上の解釈リスクを避けるため採用しない。
+dependencies = [
+    "fastapi>=0.115",          # MIT
+    "uvicorn[standard]>=0.34",  # 3条項BSD
+    "jinja2>=3.1",             # 3条項BSD
+    "python-multipart>=0.0.20", # Apache 2.0（フォーム受信）
+    "sqlalchemy>=2.0",         # MIT
+    "alembic>=1.14",           # MIT
+    "pg8000>=1.31",            # 3条項BSD（PostgreSQL ドライバ）
+    "ortools>=9.11",           # Apache 2.0
+    "openpyxl>=3.1",           # MIT
+    "argon2-cffi>=23.1",       # MIT
+    "itsdangerous>=2.2",       # 3条項BSD（セッション署名）
+]
+
+[project.optional-dependencies]
+prod = []
+dev = [
+    "pytest>=8.3",             # MIT
+    "ruff>=0.8",               # MIT
+    "pglast>=7.0",             # GPLv3 相当のため開発時のみ。成果物には含めない
+]
+
+[project.urls]
+Repository = "https://github.com/FloatedGecko667/careshift-guard"
+
+# ---------------------------------------------------------------------
+# PostgreSQL ドライバの選定について
+#   広く使われている psycopg 3 のコアは LGPL 3.0 である。
+#   LGPL はライブラリとしての利用であれば利用側のソース公開義務を
+#   生じさせないが、本ソリューションは「商用のソリューション提案に
+#   用いやすいライセンス（MIT・修正BSD・Apache 2.0）に限定する」
+#   という方針を要件定義の段階で掲げている。
+#   方針に例外を作らないため、3条項BSD の pg8000 を採用する。
+#   pg8000 は純 Python 実装のため C 拡張版より低速だが、
+#   1リクエストあたりのクエリ数が少ない本用途では影響しない。
+#   接続文字列を postgresql+psycopg:// に変えるだけで差し替えられる。
+# ---------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "S", "C4", "SIM"]
+ignore = [
+    "S101",  # pytest で assert を使うため
+    "E501",  # 行長は formatter に任せる
+]
+
+[tool.ruff.lint.per-file-ignores]
+# 合成データ生成に random を使う（暗号用途ではない）。
+# S105 はテスト用の固定パスワード文字列に対する誤検知。
+"tests/*" = ["S311", "S105"]

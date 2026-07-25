@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}マスタ管理｜CareShift Guard{% endblock %}
+
+{% block content %}
+<h1>マスタ管理</h1>
+
+{# ------------------------------------------------------------ 職員 #}
+<div class="card">
+  <h2>職員（{{ staff | length }}名）</h2>
+  <table class="list">
+    <tr>
+      <th style="width:16%">氏名</th>
+      <th style="width:13%">職種</th>
+      <th style="width:10%">雇用区分</th>
+      <th style="width:9%">週所定</th>
+      <th style="width:18%">資格・修了研修</th>
+      <th style="width:16%">兼務</th>
+      <th style="width:10%">入職日</th>
+      <th style="width:8%"></th>
+    </tr>
+    {%- for s in staff %}
+    <tr>
+      <td>{{ s.name }}</td>
+      <td>{{ job_labels.get(s.job_type, s.job_type) }}</td>
+      <td>{{ s.employment_name }}</td>
+      <td>{{ (s.weekly_minutes / 60) | round(1) }}h</td>
+      <td>{{ s.qualifications | join('、') if s.qualifications else '—' }}</td>
+      <td>
+        {%- if s.secondary_job_type %}
+          {{ job_labels.get(s.secondary_job_type, s.secondary_job_type) }}
+          {{ (s.secondary_ratio * 100) | round | int }}%
+        {%- else %}—{% endif %}
+      </td>
+      <td>{{ s.hired_on }}</td>
+      <td>
+        <form method="post" action="/masters/staff/{{ s.staff_id }}/retire"
+              style="display:flex;gap:4px">
+          <input type="date" name="retired_on" required style="padding:3px">
+          <button class="btn" type="submit"
+                  onclick="return confirm('{{ s.name }} に退職日を設定します。よろしいですか？')"
+          >退職</button>
+        </form>
+      </td>
+    </tr>
+    {%- endfor %}
+    {%- if not staff %}
+    <tr><td colspan="8" class="muted">職員が登録されていません。</td></tr>
+    {%- endif %}
+  </table>
+  <p class="muted" style="margin-top:8px">
+    退職しても行は削除しません。過去のシフト表と勤務形態一覧表を
+    再現できなくなるためです。実地指導では過去分の適合性が問われます。
+  </p>
+</div>
+
+{# ------------------------------------------------------------ 職員の追加 #}
+<div class="card">
+  <h2>職員を追加する</h2>
+  <form method="post" action="/masters/staff">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+      <div>
+        <label for="name">氏名</label>
+        <input id="name" name="name" required maxlength="60">
+      </div>
+      <div>
+        <label for="job">職種</label>
+        <select id="job" name="job_type" required>
+          {%- for code, jname in job_labels.items() %}
+          <option value="{{ code }}" {% if code == 'care_worker' %}selected{% endif %}>
+            {{ jname }}</option>
+          {%- endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="emp">雇用区分</label>
+        <select id="emp" name="employment_type_id" required>
+          {%- for e in employment_types %}
+          <option value="{{ e.employment_type_id }}">
+            {{ e.name }}（週{{ (e.weekly_minutes / 60) | round(1) }}h）</option>
+          {%- endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="hired">入職日</label>
+        <input id="hired" name="hired_on" type="date" required>
+      </div>
+      <div>
+        <label for="quals">資格・修了研修</label>
+        <input id="quals" name="qualifications" placeholder="介護福祉士、実務者研修修了">
+      </div>
+      <div>
+        <label for="sec">兼務先の職種</label>
+        <select id="sec" name="secondary_job_type">
+          <option value="">兼務なし</option>
+          {%- for code, jname in job_labels.items() %}
+          <option value="{{ code }}">{{ jname }}</option>
+          {%- endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="ratio">兼務の従事割合</label>
+        <input id="ratio" name="secondary_ratio" type="number" step="0.05"
+               min="0" max="0.95" value="0">
+      </div>
+    </div>
+    <p class="muted" style="margin-top:8px">
+      兼務の従事割合は0より大きく1より小さい値を指定します。
+      主たる職種への配分は「1 − 従事割合」となります。
+      例えば管理者が生活相談員を0.5で兼務する場合、勤務時間の半分が
+      生活相談員として常勤換算に算入されます。
+      なお管理者そのものは常勤換算の対象外です。
+    </p>
+    <button class="btn primary" type="submit" style="margin-top:8px">追加</button>
+  </form>
+</div>
+
+{# ------------------------------------------------------------ 勤務区分 #}
+<div class="card">
+  <h2>勤務区分（{{ patterns | length }}件）</h2>
+  <table class="list">
+    <tr>
+      <th style="width:8%">記号</th><th style="width:16%">名称</th>
+      <th style="width:14%">開始</th><th style="width:14%">終了</th>
+      <th style="width:12%">休憩</th><th style="width:12%">実働</th>
+      <th>区分</th>
+    </tr>
+    {%- for p in patterns %}
+    <tr>
+      <td><b>{{ p.code }}</b></td>
+      <td>{{ p.name }}</td>
+      <td>{% if p.is_rest %}—{% else %}
+          {{ '%02d:%02d' % (p.start_minute // 60, p.start_minute % 60) }}{% endif %}</td>
+      <td>{% if p.is_rest %}—{% else %}
+          {{ '%02d:%02d' % (p.end_minute // 60, p.end_minute % 60) }}{% endif %}</td>
+      <td>{{ p.break_minutes }}分</td>
+      <td>{{ (p.work_minutes / 60) | round(1) }}h</td>
+      <td>
+        {%- if p.is_rest %}公休{% elif p.is_night %}夜勤{% else %}日勤帯{% endif %}
+      </td>
+    </tr>
+    {%- endfor %}
+  </table>
+  <p class="muted" style="margin-top:8px">
+    実働時間は開始・終了・休憩から自動で算出されます（データベースの生成列）。
+    手入力させないことで、時刻と実働時間が食い違う状態を構造的に防いでいます。
+  </p>
+</div>
+
+{# ------------------------------------------------------------ 労務設定 #}
+{% if office %}
+<div class="card">
+  <h2>労務設定と常勤換算の分母</h2>
+  <table class="list" style="max-width:560px">
+    <tr><th style="width:60%">項目</th><th>値</th></tr>
+    <tr><td>常勤の1日所定労働時間（日別判定の分母）</td>
+        <td>{{ (office.fulltime_day_minutes / 60) | round(1) }} 時間</td></tr>
+    <tr><td>常勤の週所定労働時間</td>
+        <td>{{ (office.fulltime_week_minutes / 60) | round(1) }} 時間</td></tr>
+    <tr><td>常勤の暦月所定労働時間（勤務形態一覧表の分母）</td>
+        <td>{{ (office.fulltime_month_minutes / 60) | round(1) }} 時間</td></tr>
+    <tr><td>週の労働時間上限</td>
+        <td>{{ (office.max_weekly_minutes / 60) | round(1) }} 時間</td></tr>
+    <tr><td>連続勤務日数の上限</td><td>{{ office.max_consecutive_days }} 日</td></tr>
+    <tr><td>月間の最低公休日数</td><td>{{ office.min_rest_days }} 日</td></tr>
+    <tr><td>勤務間インターバル</td>
+        <td>{{ (office.min_interval_minutes / 60) | round(1) }} 時間</td></tr>
+  </table>
+  <p class="muted" style="margin-top:8px">
+    常勤換算の分母は、介護保険法上、週32時間を下回る場合は32時間とします。
+  </p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ year }}年{{ month }}月 シフト表｜CareShift Guard{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:560px">
+  <h1>{{ office.name if office else '' }} {{ year }}年{{ month }}月</h1>
+  <div class="alert err">{{ reason }}</div>
+
+  {% if avg_expected_users is defined %}
+  <h2 style="margin-top:16px">シフトを生成する</h2>
+  <p class="muted">
+    平均利用者数から介護職員の必要常勤換算数を算定します。
+    利用者15人までは1以上、15人を超える場合は超過人数を5で除した数を加えます
+    （端数は切り上げません）。
+  </p>
+  <form method="post" action="/schedules/generate"
+        style="display:flex;gap:10px;align-items:flex-end;margin-top:10px">
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <div style="width:140px">
+      <label for="avg">平均利用者数</label>
+      <input id="avg" name="avg_expected_users" type="number" step="0.1"
+             min="0" max="1000" required
+             value="{{ avg_expected_users or 22 }}">
+    </div>
+    <button class="btn primary" type="submit">シフトを自動生成</button>
+  </form>
+  {% else %}
+  <p style="margin-top:12px">
+    <a class="btn primary" href="/masters">マスタ管理へ</a>
+  </p>
+  {% endif %}
+</div>
+{% endblock %}
