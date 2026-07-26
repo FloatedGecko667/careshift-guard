@@ -38,7 +38,7 @@ TARGETS = [
     ("pytest.txt", "12_make_test.png", "コンテナ内でのテスト実行", 40),
     ("pytest_excel.txt", "17_excel_formula.png",
      "Excel の数式を LibreOffice で実評価", 20),
-    ("smoke.txt", "13_smoke.png", "スモークテスト（HTTP 経由）", 40),
+    ("smoke.txt", "13_smoke.png", "スモークテスト（HTTP 経由）", 45),
     ("seed.txt", "15_seed.png", "デモデータの投入", 30),
 ]
 

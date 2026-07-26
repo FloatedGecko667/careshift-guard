@@ -23,6 +23,10 @@ class Settings:
     app_env: str
     solver_time_limit: float
     solver_workers: int
+    # 利用者がブラウザで見ている URL の基点。
+    # パスワード再設定リンクのような「外に渡す絶対URL」を組むのに使う。
+    # 空なら要求のヘッダから推測する（開発時はこれで足りる）。
+    public_base_url: str
 
     @property
     def is_production(self) -> bool:
@@ -40,6 +44,7 @@ def get_settings() -> Settings:
         solver_time_limit=float(os.environ.get("SOLVER_TIME_LIMIT", "10")),
         # 求解は CPU を集中的に使う。割り当て OCPU 数を超えて増やしても速くならない。
         solver_workers=int(os.environ.get("SOLVER_WORKERS", "2")),
+        public_base_url=os.environ.get("PUBLIC_BASE_URL", "").rstrip("/"),
     )
 
     if s.is_production and s.secret_key in INSECURE_DEFAULTS:
@@ -58,4 +63,18 @@ def get_settings() -> Settings:
         raise RuntimeError("SOLVER_TIME_LIMIT は 1〜300 秒の範囲で指定してください。")
     if not 1 <= s.solver_workers <= 64:
         raise RuntimeError("SOLVER_WORKERS は 1〜64 の範囲で指定してください。")
+    if s.public_base_url and not s.public_base_url.startswith(
+            ("http://", "https://")):
+        raise RuntimeError(
+            "PUBLIC_BASE_URL は http:// または https:// から始めてください。")
+    # 本番では推測に頼らない。
+    #   逆プロキシとロードバランサを経由すると、アプリから見える
+    #   ホスト名・ポート・プロトコルは利用者が見ているものと一致しない。
+    #   実際に、Host にポートが含まれず再設定リンクが
+    #   http://localhost/... になって使えない状態を踏んだ。
+    if s.is_production and not s.public_base_url:
+        raise RuntimeError(
+            "本番では PUBLIC_BASE_URL を設定してください"
+            "（例 https://careshift.example.jp）。"
+            "パスワード再設定リンクの組み立てに使います。")
     return s

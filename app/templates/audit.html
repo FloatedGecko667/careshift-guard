@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}監査ログ｜CareShift Guard{% endblock %}
+
+{% block content %}
+<h1>監査ログ</h1>
+<p class="muted" style="margin-top:-6px">
+  実地指導で「誰がいつ確定したか」を説明するための記録です。
+  追記専用で、画面からもデータベースからも書き換えられません
+  （更新・削除・切り詰めはトリガで拒否しています）。
+</p>
+
+<div class="card">
+  <form method="get" action="/audit"
+        style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+    <div>
+      <label for="group">分類</label>
+      <select id="group" name="group" style="width:auto">
+        {% for code, label in groups %}
+          <option value="{{ code }}" {% if group == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="limit">表示件数</label>
+      <input id="limit" name="limit" type="number" min="1" max="1000"
+             value="{{ limit }}" style="width:110px">
+    </div>
+    <div><button class="btn" type="submit">絞り込む</button></div>
+    <div class="muted" style="margin-left:auto">
+      全 {{ total }} 件のうち直近 {{ rows | length }} 件を表示
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <table class="list">
+    <thead>
+      <tr>
+        <th style="width:150px">日時</th>
+        <th style="width:170px">実行者</th>
+        <th style="width:150px">操作</th>
+        <th style="width:120px">対象</th>
+        <th>内容</th>
+        <th style="width:120px">接続元</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td>{{ r.actor_email }}</td>
+        <td>
+          {{ labels.get(r.action, r.action) }}
+          <div class="muted" style="font-family:monospace">{{ r.action }}</div>
+        </td>
+        <td>
+          {% if r.target_type %}{{ r.target_type }}
+            {%- if r.target_id %} #{{ r.target_id }}{% endif %}
+          {% else %}<span class="muted">—</span>{% endif %}
+        </td>
+        <td>{{ r.summary }}</td>
+        <td class="muted">{{ r.ip or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="muted">記録がありません。</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">
+    接続元IPは X-Forwarded-For の先頭を採っています。この値は偽装できるため、
+    監査上の参考値として扱い、権限の判断には使っていません。
+  </p>
+</div>
+{% endblock %}

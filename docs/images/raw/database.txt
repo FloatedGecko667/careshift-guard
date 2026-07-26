@@ -1,19 +1,21 @@
 === テーブル一覧 ===
-                List of tables
- Schema |       Name       | Type  |   Owner   
---------+------------------+-------+-----------
- public | alembic_version  | table | careshift
- public | employment_types | table | careshift
- public | offices          | table | careshift
- public | schedule_entries | table | careshift
- public | schedules        | table | careshift
- public | shift_patterns   | table | careshift
- public | shift_requests   | table | careshift
- public | staff            | table | careshift
- public | staffing_rules   | table | careshift
- public | users            | table | careshift
- public | violations       | table | careshift
-(11 rows)
+                   List of tables
+ Schema |         Name          | Type  |   Owner   
+--------+-----------------------+-------+-----------
+ public | alembic_version       | table | careshift
+ public | audit_logs            | table | careshift
+ public | employment_types      | table | careshift
+ public | offices               | table | careshift
+ public | password_reset_tokens | table | careshift
+ public | schedule_entries      | table | careshift
+ public | schedules             | table | careshift
+ public | shift_patterns        | table | careshift
+ public | shift_requests        | table | careshift
+ public | staff                 | table | careshift
+ public | staffing_rules        | table | careshift
+ public | users                 | table | careshift
+ public | violations            | table | careshift
+(13 rows)
 
 === ビュー一覧 ===
               List of views

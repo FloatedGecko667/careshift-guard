@@ -30,7 +30,7 @@ def admin_row():
     return {
         "user_id": 1, "office_id": 10, "email": "admin@example.jp",
         "password_hash": security.hash_password(PASSWORD),
-        "role": "admin", "staff_id": None,
+        "role": "admin", "staff_id": None, "session_epoch": 1,
     }
 
 
@@ -41,6 +41,14 @@ def client(env, monkeypatch, admin_row):
                         lambda email: admin_row if email == admin_row["email"] else None)
     monkeypatch.setattr(repo, "touch_last_login", lambda uid: None)
     monkeypatch.setattr(repo, "update_password_hash", lambda uid, pw: None)
+    monkeypatch.setattr(repo, "write_audit", lambda **kw: None)
+    # 世代の検証は DB を引く。ここでは常に整合する値を返す。
+    monkeypatch.setattr(repo, "get_session_state", lambda uid: {
+        "user_id": admin_row["user_id"], "office_id": admin_row["office_id"],
+        "email": admin_row["email"], "role": admin_row["role"],
+        "staff_id": admin_row["staff_id"],
+        "session_epoch": admin_row["session_epoch"], "is_active": True,
+    } if uid == admin_row["user_id"] else None)
 
     security.throttle.reset(f"{admin_row['email']}|testclient")
     security.throttle._log.clear()

@@ -11,21 +11,40 @@
 """
 from __future__ import annotations
 
+import sys
 from typing import Any
 
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.db import connection
-from app.security import hash_password
+from app.security import (
+    RESET_TOKEN_TTL,
+    hash_password,
+    hash_reset_token,
+    new_reset_token,
+    unusable_password_hash,
+)
 
 # =====================================================================
 # 認証
 # =====================================================================
 SQL_FIND_USER_BY_EMAIL = """
-SELECT u.user_id, u.office_id, u.email, u.password_hash, u.role, u.staff_id
+SELECT u.user_id, u.office_id, u.email, u.password_hash, u.role, u.staff_id,
+       u.session_epoch
 FROM users u
 WHERE u.email = :email
   AND u.is_active
+"""
+
+# セッションの有効性確認。要求ごとに1回引く。
+# 署名Cookieだけを信じると、無効化やパスワード変更が既存の
+# ログインに効かない。主キー1件の参照なので費用は小さい。
+SQL_GET_SESSION_STATE = """
+SELECT u.user_id, u.office_id, u.email, u.role, u.staff_id,
+       u.session_epoch, u.is_active
+FROM users u
+WHERE u.user_id = :user_id
 """
 
 # noqa の位置に注意。三重引用符の内側に書くと SQL 文の一部になってしまう。
@@ -55,6 +74,300 @@ def update_password_hash(user_id: int, plain_password: str) -> None:
 def touch_last_login(user_id: int) -> None:
     with connection() as conn:
         conn.execute(text(SQL_TOUCH_LAST_LOGIN), {"user_id": user_id})
+
+
+def get_session_state(user_id: int) -> dict[str, Any] | None:
+    with connection() as conn:
+        row = conn.execute(text(SQL_GET_SESSION_STATE),
+                           {"user_id": user_id}).mappings().first()
+    return dict(row) if row else None
+
+
+# =====================================================================
+# アカウント管理
+#
+#   利用者の行は削除しない。監査ログが actor_user_id で参照しており、
+#   消すと「誰が操作したか」を辿れなくなる。無効化で運用する。
+# =====================================================================
+SQL_LIST_USERS = """
+SELECT u.user_id, u.email, u.role, u.staff_id, u.is_active,
+       u.last_login_at, u.created_at, s.name AS staff_name,
+       s.job_type, s.retired_on,
+       (SELECT max(t.created_at) FROM password_reset_tokens t
+         WHERE t.user_id = u.user_id AND t.used_at IS NULL
+           AND t.expires_at > now())               AS pending_reset_at
+FROM users u
+LEFT JOIN staff s ON s.staff_id = u.staff_id
+WHERE u.office_id = :office_id
+ORDER BY u.is_active DESC, u.role, u.email
+"""
+
+# アカウントを持たない在職者。紐付け候補の一覧に使う。
+SQL_LIST_STAFF_WITHOUT_USER = """
+SELECT s.staff_id, s.name, s.job_type
+FROM staff s
+WHERE s.office_id = :office_id
+  AND s.retired_on IS NULL
+  AND NOT EXISTS (SELECT 1 FROM users u WHERE u.staff_id = s.staff_id)
+ORDER BY s.job_type, s.staff_id
+"""
+
+SQL_INSERT_USER = """
+INSERT INTO users (office_id, email, password_hash, role, staff_id)
+VALUES (:office_id, :email, :password_hash, :role, :staff_id)
+RETURNING user_id
+"""
+
+# 無効化と再有効化。無効化時は世代を進めて既存セッションを失効させる。
+SQL_SET_USER_ACTIVE = """
+UPDATE users
+SET is_active = :is_active,
+    session_epoch = session_epoch + CASE WHEN :is_active THEN 0 ELSE 1 END
+WHERE office_id = :office_id
+  AND user_id = :user_id
+RETURNING email, is_active
+"""
+
+SQL_SET_USER_ROLE = """
+UPDATE users
+SET role = :role,
+    session_epoch = session_epoch + 1
+WHERE office_id = :office_id
+  AND user_id = :user_id
+RETURNING email, role
+"""
+
+# 事業所に有効な管理者が何人いるか。最後の1人を落とさないために使う。
+SQL_COUNT_ACTIVE_ADMINS = """
+SELECT count(*) FROM users
+WHERE office_id = :office_id
+  AND role = 'admin'
+  AND is_active
+"""
+
+
+def list_users(office_id: int) -> list[dict[str, Any]]:
+    with connection() as conn:
+        return [dict(r) for r in conn.execute(
+            text(SQL_LIST_USERS), {"office_id": office_id}).mappings()]
+
+
+def list_staff_without_user(office_id: int) -> list[dict[str, Any]]:
+    with connection() as conn:
+        return [dict(r) for r in conn.execute(
+            text(SQL_LIST_STAFF_WITHOUT_USER),
+            {"office_id": office_id}).mappings()]
+
+
+def insert_user(office_id: int, email: str, role: str,
+                staff_id: int | None) -> int:
+    """ログインできない状態でアカウントを作る。
+
+    パスワードは初回設定リンクを使って本人が決める。
+    管理者が代わりに設定して口頭で伝える運用は、
+    伝達経路に平文が残るため採らない。
+    """
+    with connection() as conn:
+        return int(conn.execute(text(SQL_INSERT_USER), {
+            "office_id": office_id, "email": email,
+            "password_hash": unusable_password_hash(),
+            "role": role, "staff_id": staff_id}).scalar_one())
+
+
+def set_user_active(office_id: int, user_id: int,
+                    is_active: bool) -> dict[str, Any] | None:
+    with connection() as conn:
+        row = conn.execute(text(SQL_SET_USER_ACTIVE), {
+            "office_id": office_id, "user_id": user_id,
+            "is_active": is_active}).mappings().first()
+    return dict(row) if row else None
+
+
+def set_user_role(office_id: int, user_id: int,
+                  role: str) -> dict[str, Any] | None:
+    with connection() as conn:
+        row = conn.execute(text(SQL_SET_USER_ROLE), {
+            "office_id": office_id, "user_id": user_id,
+            "role": role}).mappings().first()
+    return dict(row) if row else None
+
+
+def count_active_admins(office_id: int) -> int:
+    with connection() as conn:
+        return int(conn.execute(text(SQL_COUNT_ACTIVE_ADMINS),
+                                {"office_id": office_id}).scalar_one())
+
+
+# =====================================================================
+# パスワード再設定
+# =====================================================================
+SQL_INVALIDATE_RESET_TOKENS = """
+UPDATE password_reset_tokens
+SET used_at = now()
+WHERE user_id = :user_id
+  AND used_at IS NULL
+"""  # noqa: S105  SQL文であり秘密情報ではない
+
+SQL_INSERT_RESET_TOKEN = """
+INSERT INTO password_reset_tokens
+       (user_id, token_hash, expires_at, issued_by_user_id)
+SELECT u.user_id, :token_hash,
+       now() + make_interval(secs => :ttl_seconds), :issued_by
+FROM users u
+WHERE u.user_id = :user_id
+  AND u.office_id = :office_id
+RETURNING token_id, expires_at
+"""  # noqa: S105  SQL文であり秘密情報ではない
+
+# 有効なトークンを引く。期限と使用済みの判定を SQL 側で行う。
+# アプリ側で時刻を比べると、コンテナの時計ずれで判定が変わりうる。
+SQL_FIND_VALID_RESET_TOKEN = """
+SELECT t.token_id, t.user_id, u.office_id, u.email, u.role, u.staff_id
+FROM password_reset_tokens t
+JOIN users u ON u.user_id = t.user_id
+WHERE t.token_hash = :token_hash
+  AND t.used_at IS NULL
+  AND t.expires_at > now()
+  AND u.is_active
+"""  # noqa: S105  SQL文であり秘密情報ではない
+
+SQL_CONSUME_RESET_TOKEN = """
+UPDATE password_reset_tokens
+SET used_at = now()
+WHERE token_id = :token_id
+  AND used_at IS NULL
+RETURNING token_id
+"""  # noqa: S105  SQL文であり秘密情報ではない
+
+# パスワード変更と同時に世代を進める。
+# 変更前に発行された Cookie をすべて無効にする。
+SQL_SET_PASSWORD = """
+UPDATE users
+SET password_hash = :password_hash,
+    session_epoch = session_epoch + 1
+WHERE user_id = :user_id
+RETURNING session_epoch
+"""  # noqa: S105  SQL文であり秘密情報ではない
+
+
+def issue_reset_token(office_id: int, user_id: int,
+                      issued_by: int | None) -> tuple[str, Any] | None:
+    """再設定リンクの平文トークンと期限を返す。既存の未使用分は失効させる。
+
+    複数の有効なリンクが並存すると、どれが最新か分からなくなる。
+    発行のたびに前の分を使用済みにする。
+    """
+    raw, digest = new_reset_token()
+    with connection() as conn:
+        conn.execute(text(SQL_INVALIDATE_RESET_TOKENS), {"user_id": user_id})
+        row = conn.execute(text(SQL_INSERT_RESET_TOKEN), {
+            "user_id": user_id, "office_id": office_id,
+            "token_hash": digest, "ttl_seconds": RESET_TOKEN_TTL,
+            "issued_by": issued_by}).mappings().first()
+    if row is None:
+        return None
+    return raw, row["expires_at"]
+
+
+def find_valid_reset_token(raw_token: str) -> dict[str, Any] | None:
+    with connection() as conn:
+        row = conn.execute(text(SQL_FIND_VALID_RESET_TOKEN),
+                           {"token_hash": hash_reset_token(raw_token)}
+                           ).mappings().first()
+    return dict(row) if row else None
+
+
+def complete_password_reset(token_id: int, user_id: int,
+                            plain_password: str) -> int | None:
+    """トークンを使用済みにし、パスワードを設定する。
+
+    同一トランザクションで行う。片方だけ成功すると、
+    「リンクは使えないのにパスワードも変わっていない」状態になる。
+    UPDATE ... RETURNING で使用済み化に成功した場合のみ進める
+    ことで、同時に2回押されても1回しか通らない。
+    """
+    with connection() as conn:
+        used = conn.execute(text(SQL_CONSUME_RESET_TOKEN),
+                            {"token_id": token_id}).mappings().first()
+        if used is None:
+            return None
+        epoch = conn.execute(text(SQL_SET_PASSWORD), {
+            "user_id": user_id,
+            "password_hash": hash_password(plain_password)}).scalar_one()
+    return int(epoch)
+
+
+def set_password(user_id: int, plain_password: str) -> int:
+    """自分でのパスワード変更。世代を進めて他端末のセッションを切る。"""
+    with connection() as conn:
+        return int(conn.execute(text(SQL_SET_PASSWORD), {
+            "user_id": user_id,
+            "password_hash": hash_password(plain_password)}).scalar_one())
+
+
+# =====================================================================
+# 監査ログ
+#
+#   追記のみ。更新と削除の SQL をここに置かない。
+#   置かないだけでは手作業で消せるため、データベース側でも
+#   トリガで拒否している（db/schema.sql 参照）。
+# =====================================================================
+SQL_INSERT_AUDIT = """
+INSERT INTO audit_logs (office_id, actor_user_id, actor_email, action,
+                        target_type, target_id, summary, ip, user_agent)
+VALUES (:office_id, :actor_user_id, :actor_email, :action,
+        :target_type, :target_id, :summary, CAST(:ip AS inet), :user_agent)
+"""
+
+SQL_LIST_AUDIT = """
+SELECT a.audit_id, a.actor_email, a.action, a.target_type, a.target_id,
+       a.summary, a.ip, a.created_at
+FROM audit_logs a
+WHERE a.office_id = :office_id
+  AND (:action_prefix = '' OR a.action LIKE :action_prefix || '%')
+ORDER BY a.created_at DESC, a.audit_id DESC
+LIMIT :limit
+"""
+
+SQL_COUNT_AUDIT = """
+SELECT count(*) FROM audit_logs WHERE office_id = :office_id
+"""
+
+
+def write_audit(office_id: int, actor_user_id: int | None, actor_email: str,
+                action: str, summary: str, *, target_type: str | None = None,
+                target_id: int | None = None, ip: str | None = None,
+                user_agent: str | None = None) -> None:
+    """監査ログを1件書く。
+
+    記録に失敗しても業務操作は続行させる。
+    ログのために利用者の操作を止めるのは本末転倒である。
+    ただし失敗を黙って捨てると気づけないため、標準エラーへ出す。
+    """
+    try:
+        with connection() as conn:
+            conn.execute(text(SQL_INSERT_AUDIT), {
+                "office_id": office_id, "actor_user_id": actor_user_id,
+                "actor_email": actor_email[:255], "action": action,
+                "target_type": target_type, "target_id": target_id,
+                "summary": summary[:1000], "ip": ip,
+                "user_agent": (user_agent or "")[:255] or None})
+    except SQLAlchemyError as e:  # pragma: no cover  記録失敗時のみ
+        print(f"監査ログの記録に失敗しました: {action}: {e}", file=sys.stderr)
+
+
+def list_audit(office_id: int, limit: int = 200,
+               action_prefix: str = "") -> list[dict[str, Any]]:
+    with connection() as conn:
+        return [dict(r) for r in conn.execute(text(SQL_LIST_AUDIT), {
+            "office_id": office_id, "limit": limit,
+            "action_prefix": action_prefix}).mappings()]
+
+
+def count_audit(office_id: int) -> int:
+    with connection() as conn:
+        return int(conn.execute(text(SQL_COUNT_AUDIT),
+                                {"office_id": office_id}).scalar_one())
 
 
 # =====================================================================

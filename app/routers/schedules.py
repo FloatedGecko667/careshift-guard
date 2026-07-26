@@ -13,8 +13,8 @@ from typing import Annotated
 from fastapi import APIRouter, Form, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
 
+from app import audit, service
 from app import repository as repo
-from app import service
 from app.config import get_settings
 from app.deps import AdminDep, CurrentUserDep
 from app.excel import build_workbook
@@ -193,6 +193,14 @@ def generate(request: Request, user: AdminDep,
     repo.save_solution(user.office_id, schedule_id, entries, violations,
                        sol.status, sol.objective, sol.solve_seconds)
 
+    audit.record_user(
+        request, user, audit.SCHEDULE_GENERATE,
+        f"{year}年{month}月を生成した（平均利用者 {avg_expected_users:.1f}名・"
+        f"求解 {sol.status}・{sol.solve_seconds:.2f}秒・"
+        f"違反 {len(violations)}件・手修正の保持 "
+        f"{'あり' if keep_manual else 'なし'}）",
+        target_type="schedule", target_id=schedule_id)
+
     return RedirectResponse(f"/schedules?year={year}&month={month}",
                             status_code=status.HTTP_303_SEE_OTHER)
 
@@ -211,12 +219,17 @@ def edit_cell(request: Request, user: AdminDep, schedule_id: int,
 
     repo.update_entry(user.office_id, schedule_id, staff_id,
                       date.isoformat(), shift_pattern_id)
+    audit.record_user(
+        request, user, audit.SCHEDULE_EDIT,
+        f"職員ID {staff_id} の {date.isoformat()} を勤務区分ID "
+        f"{shift_pattern_id} に手修正した",
+        target_type="schedule", target_id=schedule_id)
     return RedirectResponse(f"/schedules?year={date.year}&month={date.month}",
                             status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/{schedule_id}/publish", include_in_schema=False)
-def publish(user: AdminDep, schedule_id: int,
+def publish(request: Request, user: AdminDep, schedule_id: int,
             year: Annotated[int, Form()],
             month: Annotated[int, Form()]) -> Response:
     """確定して職員に公開する。
@@ -228,12 +241,17 @@ def publish(user: AdminDep, schedule_id: int,
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "人員配置基準の違反が解消されていないため確定できません。")
+    # 実地指導で最初に問われるのがこの記録である。
+    audit.record_user(request, user, audit.SCHEDULE_PUBLISH,
+                      f"{year}年{month}月のシフトを確定して公開した"
+                      "（違反0件を SQL 側で確認済み）",
+                      target_type="schedule", target_id=schedule_id)
     return RedirectResponse(f"/schedules?year={year}&month={month}",
                             status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/{schedule_id}/export.xlsx", include_in_schema=False)
-def export_xlsx(user: CurrentUserDep, schedule_id: int,
+def export_xlsx(request: Request, user: CurrentUserDep, schedule_id: int,
                 year: Annotated[int, Query()],
                 month: Annotated[int, Query()]) -> Response:
     """勤務形態一覧表を Excel で出力する。実地指導への提出資料。"""
@@ -246,6 +264,10 @@ def export_xlsx(user: CurrentUserDep, schedule_id: int,
     prob, mapping = service.build_problem(
         office, staff_rows, patterns, rules, reqs, year, month, avg)
     sol = _restore(prob, mapping, schedule)
+
+    audit.record_user(request, user, audit.SCHEDULE_EXPORT,
+                      f"{year}年{month}月の勤務形態一覧表を出力した",
+                      target_type="schedule", target_id=schedule_id)
 
     wb = build_workbook(prob, sol, year=year, month=month,
                         office_name=office["name"], avg_users=avg)

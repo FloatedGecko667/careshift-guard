@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}アカウント管理｜CareShift Guard{% endblock %}
+
+{% block content %}
+<h1>アカウント管理</h1>
+
+{#
+  発行したリンクは一度しか出せない。トークンの平文は保存していないため、
+  この表示を閉じたら再発行するしかない。その旨を画面に書いておく。
+#}
+{% if issued_link %}
+<div class="card" style="border-color:var(--ok)">
+  <h2 style="color:var(--ok)">
+    {% if issued_first_time %}初回設定リンクを発行しました{% else %}再設定リンクを発行しました{% endif %}
+  </h2>
+  <p class="muted" style="margin-top:0">
+    対象: <strong>{{ issued_email }}</strong>　／
+    有効期限: <strong>{{ issued_expires.strftime('%Y-%m-%d %H:%M') }}</strong>
+  </p>
+  <input type="text" readonly value="{{ issued_link }}"
+         onclick="this.select()" style="font-family:monospace;font-size:12px">
+  <p class="muted">
+    このリンクは<strong>この画面でしか表示されません</strong>。
+    サーバにはハッシュだけを保存しているため、閉じた後は再発行するしかありません。
+    本人に渡してください。使用は1回のみで、期限を過ぎると無効になります。
+  </p>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>アカウント一覧（{{ users | length }}件）</h2>
+  <table class="list">
+    <thead>
+      <tr>
+        <th>メールアドレス</th>
+        <th>権限</th>
+        <th>紐付く職員</th>
+        <th>状態</th>
+        <th>最終ログイン</th>
+        <th>未使用リンク</th>
+        <th style="width:280px">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr {% if not u.is_active %}style="color:var(--muted);background:#fafafa"{% endif %}>
+        <td>{{ u.email }}</td>
+        <td>
+          <form method="post" action="/accounts/{{ u.user_id }}/role"
+                style="display:flex;gap:4px;margin:0">
+            <select name="role" style="width:auto">
+              {% for code, label in roles.items() %}
+                <option value="{{ code }}" {% if u.role == code %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn" type="submit">変更</button>
+          </form>
+        </td>
+        <td>
+          {% if u.staff_name %}
+            {{ u.staff_name }}（{{ job_labels.get(u.job_type, u.job_type) }}）
+            {% if u.retired_on %}<span class="muted">退職 {{ u.retired_on }}</span>{% endif %}
+          {% else %}
+            <span class="muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if u.is_active %}有効{% else %}<strong>無効</strong>{% endif %}
+        </td>
+        <td>
+          {% if u.last_login_at %}{{ u.last_login_at.strftime('%Y-%m-%d %H:%M') }}
+          {% else %}<span class="muted">未ログイン</span>{% endif %}
+        </td>
+        <td>
+          {% if u.pending_reset_at %}あり{% else %}<span class="muted">—</span>{% endif %}
+        </td>
+        <td style="display:flex;gap:6px">
+          <form method="post" action="/accounts/{{ u.user_id }}/reset" style="margin:0">
+            <button class="btn" type="submit">再設定リンク発行</button>
+          </form>
+          <form method="post" action="/accounts/{{ u.user_id }}/active" style="margin:0">
+            <input type="hidden" name="is_active" value="{{ '0' if u.is_active else '1' }}">
+            <button class="btn" type="submit"
+                    {% if u.is_active and (u.user_id == current_user.user_id
+                        or (u.role == 'admin' and active_admins <= 1)) %}disabled{% endif %}>
+              {{ '無効化' if u.is_active else '有効化' }}
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">
+    アカウントは削除できません。監査ログが実行者を参照しているため、
+    消すと「誰が操作したか」を辿れなくなります。退職時は無効化してください。
+    無効化すると、その利用者の既存のログインもその時点で切れます。
+  </p>
+  <p class="muted">
+    有効な管理者は現在 {{ active_admins }} 名です。
+    0名になる操作はできません（誰もアカウントを直せなくなるため）。
+  </p>
+</div>
+
+<div class="card">
+  <h2>アカウントを作成する</h2>
+  <form method="post" action="/accounts">
+    <div style="display:grid;grid-template-columns:2fr 1fr 2fr auto;gap:12px;align-items:end">
+      <div>
+        <label for="email">メールアドレス</label>
+        <input id="email" name="email" type="email" required
+               placeholder="suzuki@example.jp">
+      </div>
+      <div>
+        <label for="role">権限</label>
+        <select id="role" name="role">
+          {% for code, label in roles.items() %}
+            <option value="{{ code }}" {% if code == 'staff' %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="staff_id">紐付ける職員</label>
+        <select id="staff_id" name="staff_id">
+          <option value="">紐付けなし（管理者専用）</option>
+          {% for s in linkable_staff %}
+            <option value="{{ s.staff_id }}">
+              {{ s.name }}（{{ job_labels.get(s.job_type, s.job_type) }}）
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div><button class="btn primary" type="submit">作成</button></div>
+    </div>
+  </form>
+  <p class="muted">
+    作成した時点ではログインできません。続けて初回設定リンクを表示するので、
+    本人に渡してください。管理者がパスワードを決めて口頭やチャットで伝える運用は
+    採っていません。伝達経路に平文が残るためです。
+  </p>
+  <p class="muted">
+    職員権限には職員の紐付けが必要です。紐付けると、その職員は自分の希望シフトだけを
+    入力できます。紐付け候補に出るのは「在職中でアカウントを持たない職員」だけです。
+  </p>
+</div>
+{% endblock %}

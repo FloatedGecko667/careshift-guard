@@ -62,7 +62,7 @@ def register_routers() -> None:
     """
     from importlib import import_module
 
-    for name in ("auth", "masters", "requests", "schedules"):
+    for name in ("auth", "accounts", "masters", "requests", "schedules"):
         try:
             module = import_module(f"app.routers.{name}")
         except ModuleNotFoundError:

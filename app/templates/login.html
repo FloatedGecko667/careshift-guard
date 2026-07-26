@@ -12,6 +12,11 @@
   {% if error %}
     <div class="alert err" style="margin-top:14px">{{ error }}</div>
   {% endif %}
+  {% if request.query_params.get('reset') == 'done' %}
+    <div class="alert ok" style="margin-top:14px">
+      パスワードを設定しました。新しいパスワードでログインしてください。
+    </div>
+  {% endif %}
 
   <form method="post" action="/login" style="margin-top:14px">
     <div style="margin-bottom:12px">
@@ -27,8 +32,12 @@
     <button class="btn primary" type="submit" style="width:100%">ログイン</button>
   </form>
 
+  <p class="muted" style="margin-top:14px;text-align:center">
+    パスワードが分からない場合は、事業所の管理者に再設定リンクの発行を
+    依頼してください。
+  </p>
   {% if app_env and app_env != 'production' %}
-    <p class="muted" style="margin-top:14px;text-align:center">
+    <p class="muted" style="margin-top:6px;text-align:center">
       稼働環境: {{ app_env }}
     </p>
   {% endif %}

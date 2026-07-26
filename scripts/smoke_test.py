@@ -94,7 +94,8 @@ def main() -> int:
                        f"HTTP {s} / {len(body)} バイト"))
 
         # --- 未ログインでの保護経路 ---
-        for path in ("/schedules", "/masters", "/requests"):
+        for path in ("/schedules", "/masters", "/requests",
+                     "/accounts", "/audit", "/password/change"):
             s, h, _ = probe(path)
             loc = h.get("Location") or h.get("location")
             checks.append((f"{path} が未ログインでログイン画面へ誘導",
@@ -114,6 +115,16 @@ def main() -> int:
         s, _, _ = probe("/schedules/generate")
         checks.append(("POST専用の経路にGETできない",
                        s in (303, 405), f"HTTP {s}"))
+
+        # --- パスワード再設定 ---
+        #   未ログインで開ける唯一の経路。トークンが無効なら 400 を返し、
+        #   アカウントの存在を推測させないこと。
+        s, _, body = probe("/password/reset")
+        checks.append(("トークン無しの再設定画面は拒否される",
+                       s == 400 and "無効" in body, f"HTTP {s}"))
+        s, _, body = probe("/password/reset?token=" + "0" * 43)
+        checks.append(("存在しないトークンは拒否される",
+                       s == 400, f"HTTP {s}"))
 
         print(f"{'項目':<48}{'結果':<6}詳細")
         print("-" * 92)

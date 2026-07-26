@@ -12,6 +12,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 
+from app import repository as repo
 from app.security import SESSION_COOKIE, CurrentUser, read_session
 
 
@@ -24,10 +25,33 @@ def optional_user(request: Request) -> CurrentUser | None:
 
 
 def require_user(request: Request) -> CurrentUser:
+    """署名の検証に加えて、データベース側の状態も確認する。
+
+    セッションはサーバに状態を持たない署名Cookieである。
+    署名だけを信じると次の3つが既存のログインに効かない。
+      ・アカウントの無効化
+      ・パスワードの変更（漏えい時の締め出し）
+      ・権限の変更（職員へ降格しても管理画面に入れてしまう）
+
+    そのため users.session_epoch を要求ごとに1件参照する。
+    主キー1件の索引参照なので、この確実さに対して費用は小さい。
+    権限は Cookie の値ではなく、必ず DB の現在値を採用する。
+    """
     user = optional_user(request)
     if user is None:
         raise LoginRequired
-    return user
+
+    state = repo.get_session_state(user.user_id)
+    if state is None or not state["is_active"]:
+        raise LoginRequired
+    if int(state["session_epoch"]) != user.session_epoch:
+        raise LoginRequired
+
+    return CurrentUser(
+        user_id=int(state["user_id"]), office_id=int(state["office_id"]),
+        email=str(state["email"]), role=str(state["role"]),
+        staff_id=int(state["staff_id"]) if state["staff_id"] is not None else None,
+        session_epoch=int(state["session_epoch"]))
 
 
 def require_admin(

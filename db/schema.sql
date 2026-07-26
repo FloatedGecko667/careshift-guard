@@ -1,15 +1,18 @@
 -- =====================================================================
 -- CareShift Guard  データベーススキーマ
 --   対象: PostgreSQL 18
---   方針: 初版（第1リリース）の10テーブル。すべての業務テーブルに
---         office_id を持たせ、アプリケーション層で必ず絞り込む。
+--   方針: 12テーブル。すべての業務テーブルに office_id を持たせ、
+--         アプリケーション層で必ず絞り込む。
 --   注意: PostgreSQL 18 固有の構文は使用していないため、
 --         PostgreSQL 14 以降であればそのまま適用できる。
 -- =====================================================================
 
 BEGIN;
 
-DROP VIEW  IF EXISTS v_daily_fte           CASCADE;
+DROP VIEW     IF EXISTS v_daily_fte              CASCADE;
+DROP FUNCTION IF EXISTS audit_logs_append_only () CASCADE;
+DROP TABLE IF EXISTS audit_logs            CASCADE;
+DROP TABLE IF EXISTS password_reset_tokens CASCADE;
 DROP TABLE IF EXISTS violations            CASCADE;
 DROP TABLE IF EXISTS schedule_entries      CASCADE;
 DROP TABLE IF EXISTS schedules             CASCADE;
@@ -74,11 +77,19 @@ CREATE TABLE users (
     role           text        NOT NULL,
     staff_id       bigint,
     is_active      boolean     NOT NULL DEFAULT true,
+    -- セッションの世代。パスワード変更・無効化・権限変更で1増やす。
+    -- 署名Cookieはサーバ側に状態を持たないため、これが無いと
+    -- 「パスワードを変えたのに古いCookieでそのまま入れる」状態になる。
+    session_epoch  integer     NOT NULL DEFAULT 1,
     last_login_at  timestamptz,
     created_at     timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT uq_users_email CHECK (email = lower(email)),
-    CONSTRAINT ck_users_role  CHECK (role IN ('admin', 'staff'))
+    CONSTRAINT uq_users_email  CHECK (email = lower(email)),
+    CONSTRAINT ck_users_role   CHECK (role IN ('admin', 'staff')),
+    CONSTRAINT ck_users_epoch  CHECK (session_epoch > 0)
 );
+-- staff への外部キーは staff の定義後に ALTER で付ける（下記）。
+-- users を staff より先に置いているのは、認証が業務データより
+-- 手前の概念であることを構成で示すためである。
 
 CREATE UNIQUE INDEX ux_users_email ON users (email);
 CREATE INDEX ix_users_office ON users (office_id);
@@ -137,8 +148,18 @@ CREATE INDEX ix_staff_office_job ON staff (office_id, job_type);
 COMMENT ON COLUMN staff.job_type IS
     'care_worker=介護職員 / nurse=看護職員 / counselor=生活相談員 / trainer=機能訓練指導員 / manager=管理者';
 
+-- users.staff_id の外部キーはここで付ける。
+-- users を staff より前に置いているのは、認証が業務データより手前の
+-- 概念であることを構成で示すためである。DDL の順序上、参照先が
+-- 存在してからでないと制約を宣言できない。
 ALTER TABLE users
-    ADD CONSTRAINT fk_users_staff FOREIGN KEY (staff_id) REFERENCES staff (staff_id);
+    ADD CONSTRAINT fk_users_staff FOREIGN KEY (staff_id)
+        REFERENCES staff (staff_id) ON DELETE SET NULL;
+
+-- 1人の職員に2つのログインを持たせない。
+-- 部分索引にしているのは、管理者専用の利用者（staff_id が NULL）を
+-- 複数作れるようにするためである。
+CREATE UNIQUE INDEX ux_users_staff ON users (staff_id) WHERE staff_id IS NOT NULL;
 
 
 -- ---------------------------------------------------------------------
@@ -297,6 +318,100 @@ CREATE TABLE violations (
 );
 
 CREATE INDEX ix_violations_lookup ON violations (schedule_id, target_date);
+
+
+-- ---------------------------------------------------------------------
+-- 11. password_reset_tokens  パスワード再設定のワンタイムトークン
+--
+--   平文のトークンは保存しない。SHA-256 のハッシュだけを持つ。
+--   データベースが漏えいしても、そこから有効なリンクは作れない。
+--
+--   期限つき・単回使用。使用済みは used_at で記録し、行は消さない。
+--   「いつ誰が再設定したか」を監査で追えるようにするためである。
+-- ---------------------------------------------------------------------
+CREATE TABLE password_reset_tokens (
+    token_id          bigint      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id           bigint      NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+    -- SHA-256 の16進表記。64文字固定
+    token_hash        text        NOT NULL,
+    expires_at        timestamptz NOT NULL,
+    used_at           timestamptz,
+    -- 発行者。管理者が発行した場合はその利用者。将来の自己申請では NULL
+    issued_by_user_id bigint      REFERENCES users (user_id) ON DELETE SET NULL,
+    created_at        timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT ck_prt_hash    CHECK (token_hash ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_prt_expires CHECK (expires_at > created_at)
+);
+
+CREATE UNIQUE INDEX ux_prt_hash ON password_reset_tokens (token_hash);
+-- 未使用かつ有効なトークンの探索用
+CREATE INDEX ix_prt_user ON password_reset_tokens (user_id, used_at);
+
+COMMENT ON COLUMN password_reset_tokens.token_hash IS
+    'SHA-256(トークン)。平文は発行時に一度だけ画面に出し、保存しない';
+
+
+-- ---------------------------------------------------------------------
+-- 12. audit_logs  監査ログ
+--
+--   実地指導では「誰がいつ確定したか」を説明できる必要がある。
+--   last_login_at だけでは答えられないため、操作の記録を残す。
+--
+--   追記専用。UPDATE と DELETE と TRUNCATE はトリガで拒否する。
+--   アプリケーション側に更新用の SQL を置かないだけでは、
+--   運用中の手作業で消せてしまい、監査証跡として機能しない。
+--
+--   actor_email は当時の値の写しである。利用者の改名や無効化のあとでも
+--   「そのとき誰だったか」が残るようにするため、参照ではなく複製する。
+-- ---------------------------------------------------------------------
+CREATE TABLE audit_logs (
+    audit_id      bigint      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    office_id     bigint      NOT NULL REFERENCES offices (office_id) ON DELETE CASCADE,
+    -- 実行者。未ログインでの失敗（存在しないメールアドレス等）では NULL
+    actor_user_id bigint      REFERENCES users (user_id) ON DELETE SET NULL,
+    actor_email   text        NOT NULL,
+    -- 「対象.動作」の形式。例 schedule.publish / account.deactivate
+    action        text        NOT NULL,
+    target_type   text,
+    target_id     bigint,
+    -- 人が読む1行の説明。数値の根拠は summary に書き切る
+    summary       text        NOT NULL,
+    ip            inet,
+    user_agent    text,
+    created_at    timestamptz NOT NULL DEFAULT now(),
+    -- 値そのものを列挙すると、操作を1つ増やすたびに移行が必要になる。
+    -- 形式だけを縛る。
+    CONSTRAINT ck_audit_action CHECK (action ~ '^[a-z_]+\.[a-z_]+$'),
+    CONSTRAINT ck_audit_target CHECK (
+        (target_type IS NULL AND target_id IS NULL)
+     OR (target_type IS NOT NULL))
+);
+
+CREATE INDEX ix_audit_office_time ON audit_logs (office_id, created_at DESC);
+CREATE INDEX ix_audit_action      ON audit_logs (office_id, action, created_at DESC);
+CREATE INDEX ix_audit_target      ON audit_logs (office_id, target_type, target_id);
+
+COMMENT ON TABLE audit_logs IS
+    '監査ログ。追記専用。更新・削除・切り詰めはトリガで拒否する';
+
+-- 追記専用をデータベース側で担保する。
+CREATE FUNCTION audit_logs_append_only() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION
+        'audit_logs は追記専用です（試行された操作: %）', TG_OP
+        USING ERRCODE = 'restrict_violation';
+END;
+$$;
+
+CREATE TRIGGER trg_audit_logs_no_change
+    BEFORE UPDATE OR DELETE ON audit_logs
+    FOR EACH ROW EXECUTE FUNCTION audit_logs_append_only();
+
+-- TRUNCATE は行トリガを通らないため、文トリガで別に止める。
+CREATE TRIGGER trg_audit_logs_no_truncate
+    BEFORE TRUNCATE ON audit_logs
+    FOR EACH STATEMENT EXECUTE FUNCTION audit_logs_append_only();
 
 
 -- ---------------------------------------------------------------------

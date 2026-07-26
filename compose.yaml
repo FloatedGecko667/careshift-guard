@@ -43,6 +43,10 @@ services:
       DATABASE_URL: postgresql+pg8000://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       SECRET_KEY: ${SECRET_KEY}
       APP_ENV: ${APP_ENV:-development}
+      # 利用者がブラウザで見ている URL の基点。
+      # パスワード再設定リンクの組み立てに使う。
+      # 本番では必須（未設定なら起動時に失敗する）。
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       SOLVER_TIME_LIMIT: ${SOLVER_TIME_LIMIT:-10}
       SOLVER_WORKERS: ${SOLVER_WORKERS:-2}
     healthcheck:

@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
+from app import audit
 from app import repository as repo
 from app.deps import AdminDep
 from app.jobs import JOB_CODE, JOB_LABEL
@@ -29,7 +30,7 @@ def show(request: Request, user: AdminDep) -> Response:
 
 
 @router.post("/staff", include_in_schema=False)
-def add_staff(user: AdminDep,
+def add_staff(request: Request, user: AdminDep,
               name: Annotated[str, Form()],
               job_type: Annotated[str, Form()],
               employment_type_id: Annotated[int, Form()],
@@ -66,16 +67,21 @@ def add_staff(user: AdminDep,
     quals = [q.strip() for q in qualifications.replace("、", ",").split(",")
              if q.strip()]
 
-    repo.insert_staff(user.office_id, name=name, job_type=job_type,
-                      employment_type_id=employment_type_id,
-                      qualifications=quals, secondary_job_type=sec,
-                      secondary_ratio=secondary_ratio,
-                      hired_on=hired.isoformat())
+    staff_id = repo.insert_staff(user.office_id, name=name, job_type=job_type,
+                                 employment_type_id=employment_type_id,
+                                 qualifications=quals, secondary_job_type=sec,
+                                 secondary_ratio=secondary_ratio,
+                                 hired_on=hired.isoformat())
+    audit.record_user(
+        request, user, audit.STAFF_ADD,
+        f"{name} を職種 {job_type} で追加した"
+        + (f"（{sec} を {secondary_ratio:.2f} で兼務）" if sec else ""),
+        target_type="staff", target_id=staff_id)
     return RedirectResponse("/masters", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/staff/{staff_id}/retire", include_in_schema=False)
-def retire(user: AdminDep, staff_id: int,
+def retire(request: Request, user: AdminDep, staff_id: int,
            retired_on: Annotated[str, Form()]) -> Response:
     """退職日を設定する。行は削除しない。
 
@@ -88,4 +94,7 @@ def retire(user: AdminDep, staff_id: int,
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "退職日の形式が不正です。") from e
     repo.retire_staff(user.office_id, staff_id, date.isoformat())
+    audit.record_user(request, user, audit.STAFF_RETIRE,
+                      f"職員ID {staff_id} の退職日を {date.isoformat()} に設定した",
+                      target_type="staff", target_id=staff_id)
     return RedirectResponse("/masters", status_code=status.HTTP_303_SEE_OTHER)

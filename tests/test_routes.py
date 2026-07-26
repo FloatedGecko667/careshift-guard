@@ -22,7 +22,7 @@ def _user_row(role: str, staff_id: int | None = None):
     return {"user_id": 1 if role == "admin" else 2, "office_id": 1,
             "email": f"{role}@example.jp",
             "password_hash": security.hash_password(PASSWORD),
-            "role": role, "staff_id": staff_id}
+            "role": role, "staff_id": staff_id, "session_epoch": 1}
 
 
 @pytest.fixture
@@ -100,6 +100,11 @@ def fake_db(monkeypatch):
         return True
 
     monkeypatch.setattr(repo, "publish_schedule", publish)
+
+    # 監査ログ。書かれた内容をテストから確認できるよう溜める。
+    state["audit"] = []
+    monkeypatch.setattr(repo, "write_audit",
+                        lambda **kw: state["audit"].append(kw))
     return state
 
 
@@ -115,6 +120,12 @@ def _client(monkeypatch, role: str, staff_id: int | None = None):
     from app import repository as repo
     row = _user_row(role, staff_id)
     monkeypatch.setattr(repo, "find_user_by_email", lambda e: row)
+    # セッションの世代検証は DB を引く。整合する値を返す。
+    monkeypatch.setattr(repo, "get_session_state", lambda uid: {
+        "user_id": row["user_id"], "office_id": row["office_id"],
+        "email": row["email"], "role": row["role"],
+        "staff_id": row["staff_id"], "session_epoch": row["session_epoch"],
+        "is_active": True} if uid == row["user_id"] else None)
 
     from app import main
     importlib.reload(main)
