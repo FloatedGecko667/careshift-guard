@@ -27,6 +27,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # デモ・検証時はコンテナ自身にテストを実行させたいため true にする。
+        # 顧客提供時は既定の false のままにする（pglast を含めない）。
+        INSTALL_DEV: ${INSTALL_DEV:-false}
     depends_on:
       db:
         condition: service_healthy

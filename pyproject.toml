@@ -1,3 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# app パッケージのみを配布対象にする。
+# 明示しないと setuptools が app / tests / scripts を
+# 「複数のトップレベルパッケージ」と判断してビルドに失敗する。
+[tool.setuptools]
+packages = ["app", "app.routers"]
+
+# テンプレートと静的ファイルは .py ではないため、
+# 明示しないと wheel に入らない。
+# 入っていないと、site-packages 側の app が import されたときに
+# 画面描画が TemplateNotFound で失敗する。
+[tool.setuptools.package-data]
+app = ["templates/*.html", "templates/partials/*.html", "static/*"]
+
 [project]
 name = "careshift-guard"
 version = "0.1.0"
