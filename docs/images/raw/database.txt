@@ -1,0 +1,45 @@
+=== テーブル一覧 ===
+                List of tables
+ Schema |       Name       | Type  |   Owner   
+--------+------------------+-------+-----------
+ public | alembic_version  | table | careshift
+ public | employment_types | table | careshift
+ public | offices          | table | careshift
+ public | schedule_entries | table | careshift
+ public | schedules        | table | careshift
+ public | shift_patterns   | table | careshift
+ public | shift_requests   | table | careshift
+ public | staff            | table | careshift
+ public | staffing_rules   | table | careshift
+ public | users            | table | careshift
+ public | violations       | table | careshift
+(11 rows)
+
+=== ビュー一覧 ===
+              List of views
+ Schema |    Name     | Type |   Owner   
+--------+-------------+------+-----------
+ public | v_daily_fte | view | careshift
+(1 row)
+
+=== PostgreSQL のバージョン ===
+PostgreSQL 18.4 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+=== 人員配置基準ルール ===
+  job_type   |  formula_type  | base_fte | threshold_users | step_users | step_fte | min_headcount 
+-------------+----------------+----------+-----------------+------------+----------+---------------
+ care_worker | per_users_step |     1.00 |              15 |          5 |     1.00 |             1
+ counselor   | constant       |     1.00 |                 |            |          |             1
+ nurse       | constant       |     1.00 |                 |            |          |             1
+ trainer     | constant       |     1.00 |                 |            |          |             1
+(4 rows)
+
+=== 勤務区分（work_minutes は生成列） ===
+ code | name | start_minute | end_minute | break_minutes | work_minutes 
+------+------+--------------+------------+---------------+--------------
+ 休   | 公休 |            0 |          0 |             0 |            0
+ 早   | 早番 |          420 |        960 |            60 |          480
+ 日   | 日勤 |          510 |       1050 |            60 |          480
+ 遅   | 遅番 |          600 |       1140 |            60 |          480
+ 半   | 半日 |          510 |        750 |             0 |          240
+(5 rows)
+

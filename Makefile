@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help init vendor up down logs migrate seed shell test lint fmt sample slides smoke clean
+.PHONY: help init vendor up down logs migrate seed shell test lint fmt sample xlsximg evidence pv slides smoke demo clean
 
 help:  ## 使えるターゲットを一覧表示する
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -51,6 +51,19 @@ sample:  ## サンプルの勤務形態一覧表を生成する
 	python3 -m scripts.export_sample
 	python3 -m scripts.render_preview docs/samples/preview_基準充足.html 24 22 42
 	python3 -m scripts.render_preview docs/samples/preview_基準違反あり.html 13 38 7
+
+xlsximg:  ## 勤務形態一覧表の xlsx をスライド用の画像にする
+	python3 -m scripts.render_xlsx
+
+demo:  ## ローカルDockerで起動し証跡を取得する（1コマンド）
+	bash scripts/capture_demo.sh
+
+evidence:  ## 証跡テキストをスライド用の画像に変換する
+	python3 -m scripts.render_evidence
+
+pv:  ## 紹介動画(MP4)を組み立てる
+	python3 -m scripts.build_pv
+	python3 -m scripts.build_pv --concat
 
 slides:  ## 発表スライドを生成する（docs/images の画像を埋め込む）
 	@test -d node_modules || npm install pptxgenjs

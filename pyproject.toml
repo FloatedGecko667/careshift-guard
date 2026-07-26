@@ -47,6 +47,11 @@ dev = [
     "pytest>=8.3",             # MIT
     "ruff>=0.8",               # MIT
     "pglast>=7.0",             # GPLv3 相当のため開発時のみ。成果物には含めない
+    # starlette.testclient が要求する HTTP クライアント。修正BSD。
+    # starlette は httpx から httpx2 へ移行しており、
+    # 入れていないと TestClient の import 時点で RuntimeError になる。
+    # 開発環境にたまたま httpx があると気づけないため明示する。
+    "httpx2>=2.9",             # BSD-3-Clause
 ]
 
 [project.urls]

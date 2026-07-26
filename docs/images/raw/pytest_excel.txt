@@ -1,0 +1,8 @@
+=== Excel の数式を LibreOffice で実評価する2件 ===
+（コンテナには LibreOffice を含めないため、この2件だけホスト側で実行する）
+
+LibreOffice 26.2.4.2 620(Build:2)
+
+tests/test_excel.py::test_当月合計の数式がPythonの計算と一致する PASSED  [ 50%]
+tests/test_excel.py::test_常勤換算の数式が第2位切り捨てで一致する PASSED [100%]
+======================= 2 passed, 6 deselected in 12.15s =======================

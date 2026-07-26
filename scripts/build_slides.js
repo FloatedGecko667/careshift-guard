@@ -31,9 +31,16 @@ const C = {
 const F = { head: "Cambria", body: "Calibri" };
 
 // リポジトリと公開先。未確定のものは「準備中」と出す。
+// 紹介動画はこのファイル自身に埋め込む（外部の動画共有サービスを使わない）。
+// 埋め込みが成功したかどうかで、まとめスライドの表記を切り替える。
+const VIDEO = "docs/紹介動画_CareShift_Guard.mp4";
+const hasVideo = fs.existsSync(VIDEO);
+
 const LINKS = {
   repo:  "https://github.com/FloatedGecko667/careshift-guard",
-  video: process.env.PV_URL || "（紹介動画URL：撮影後に差し替え）",
+  video: hasVideo
+    ? "本ファイルの最終スライドに埋め込み（外部サイト不要・オフライン再生可）"
+    : "（紹介動画：make pv で生成後に埋め込み）",
   demo:  process.env.DEMO_URL || "（デモ環境URL：デプロイ後に差し替え）",
 };
 
@@ -120,7 +127,7 @@ function shotTracked(slide, file, o) {
   if (!shot(slide, file, o)) missing.push(`${file}  — ${o.hint || ""}`);
 }
 
-// ================================================================ 1 表題
+// ============================================================ 1 表題
 {
   const s = pres.addSlide();
   s.background = { color: C.dark };
@@ -159,7 +166,7 @@ function shotTracked(slide, file, o) {
              "『シフト作成ツールではなく、減算を防ぐ仕組み』と言い切る。");
 }
 
-// ================================================================ 2 課題
+// ============================================================ 2 課題
 {
   const s = pres.addSlide();
   titleBar(s, "解決する課題", "人員基準欠如減算は、事故ではなく運用で防げる損失です");
@@ -192,7 +199,7 @@ function shotTracked(slide, file, o) {
              "『事故ではなく、シフトの組み方で防げる損失』が要点。");
 }
 
-// ================================================================ 3 なぜ気づけないか
+// ====================================================== 3 なぜ気づけないか
 {
   const s = pres.addSlide();
   titleBar(s, "なぜ現場は気づけないのか",
@@ -243,7 +250,7 @@ function shotTracked(slide, file, o) {
              "『月次では適合、日別では8件違反。同じデータです』と言う。");
 }
 
-// ================================================================ 4 提供する機能
+// ======================================================== 4 提供する機能
 {
   const s = pres.addSlide();
   titleBar(s, "提供する機能", "価値の連鎖が1本通ることを最優先に、初版は5画面に絞りました");
@@ -280,7 +287,7 @@ function shotTracked(slide, file, o) {
              "最後の『確定できない』は設計判断として強調する。");
 }
 
-// ================================================================ 5 デモ シフト表
+// ======================================================= 5 デモ シフト表
 {
   const s = pres.addSlide();
   titleBar(s, "稼働画面　シフト表", "常勤換算と基準判定を同一画面に置いています");
@@ -295,7 +302,44 @@ function shotTracked(slide, file, o) {
              "と具体的に言う。");
 }
 
-// ================================================================ 6 デモ 帳票
+// ====================================================== 6 月次と日別の乖離
+{
+  const s = pres.addSlide();
+  titleBar(s, "月次では適合、日別では8日が違反",
+           "この乖離が「気づけないまま減算される」原因です");
+
+  // 11_daily_check.png は横長・縦が短い。横幅いっぱいに置く。
+  shotTracked(s, "11_daily_check.png", {
+    x: M, y: 1.6, w: W - M * 2, h: 3.05,
+    hint: "必要／実際の2段と、最下段の判定（○×）が読めるように" });
+
+  const pts = [
+    ["月次の常勤換算では全職種が基準以上", "生活相談員1.2・看護職員1.4・介護職員8.7・機能訓練指導員1.4"],
+    ["しかし日別に見ると8日が不足", "兼務者が休む日に0.5や0.7へ落ち、必要な1.0を満たさない"],
+    ["表計算では日別まで検算しきれない", "31日×4職種＝124セルを毎月手で確認する運用は続かない"],
+  ];
+  const pw = (W - M * 2 - 0.4 * 2) / 3;
+  pts.forEach(([t, d], i) => {
+    const x = M + (pw + 0.4) * i;
+    card(s, { x, y: 4.85, w: pw, h: 1.55,
+              fill: i === 1 ? "FDECEA" : C.white,
+              lineColor: i === 1 ? C.alert : C.line });
+    s.addText(t, { x: x + 0.22, y: 4.97, w: pw - 0.44, h: 0.5,
+                   fontFace: F.body, fontSize: 13, bold: true,
+                   color: i === 1 ? C.alert : C.dark, margin: 0 });
+    s.addText(d, { x: x + 0.22, y: 5.5, w: pw - 0.44, h: 0.8,
+                   fontFace: F.body, fontSize: 11, color: C.ink, margin: 0,
+                   lineSpacingMultiple: 1.15 });
+  });
+  s.addText("※ 出力した Excel の「日別の基準判定」シートをそのまま貼っています。" +
+            "数値はすべて数式で、開けば検算できます。", {
+    x: M, y: 6.55, w: W - M * 2, h: 0.4,
+    fontFace: F.body, fontSize: 10, color: C.muted, margin: 0 });
+  s.addNotes("30秒。ここが提案の核心。月次だけ見ていると適合に見えることを先に言い、" +
+             "×の並びを指す。");
+}
+
+// ========================================================= 7 デモ 帳票
 {
   const s = pres.addSlide();
   titleBar(s, "稼働画面　勤務形態一覧表",
@@ -324,7 +368,7 @@ function shotTracked(slide, file, o) {
   s.addNotes("30秒。『数式で書いてあるので担当者がその場で検算できる』が要点。");
 }
 
-// ================================================================ 7 技術構成
+// ========================================================== 8 技術構成
 {
   const s = pres.addSlide();
   titleBar(s, "技術構成", "Docker Compose 3コンテナ／Oracle Cloud Infrastructure");
@@ -353,7 +397,7 @@ function shotTracked(slide, file, o) {
   s.addNotes("25秒。指定要件は『いずれか1つ以上』。2項目を充足していると述べる。");
 }
 
-// ================================================================ 8 生成AIを使わない理由
+// =================================================== 9 生成AIを使わない理由
 {
   const s = pres.addSlide();
   s.background = { color: C.dark };
@@ -395,7 +439,7 @@ function shotTracked(slide, file, o) {
              "『流行だから使う』ではなく『使わない理由を説明できる』ことを示す。");
 }
 
-// ================================================================ 9 費用と収益
+// ======================================================== 10 費用と収益
 {
   const s = pres.addSlide();
   titleBar(s, "費用と収益", "補助金も無料枠も前提としません。1米ドル165円で算定");
@@ -447,7 +491,7 @@ function shotTracked(slide, file, o) {
              "『補助金も無料枠も前提にしていない』と明言する。");
 }
 
-// ================================================================ 10 経営者への投資対効果
+// =================================================== 11 経営者への投資対効果
 {
   const s = pres.addSlide();
   titleBar(s, "経営者から見た投資対効果",
@@ -506,38 +550,45 @@ function shotTracked(slide, file, o) {
   s.addNotes("35秒。『導入しない理由を説明するほうが難しい水準』と締める。");
 }
 
-// ================================================================ 11 稼働の証拠
+// ======================================================== 12 稼働の証拠
 {
   const s = pres.addSlide();
-  titleBar(s, "クラウド上で稼働している証拠",
-           "Oracle Cloud Infrastructure の Ampere A1（Arm）上で動作しています");
+  titleBar(s, "動作している証拠",
+           "検証は arm64 の Docker 上で実施。本番の Oracle Cloud（Ampere A1）は" +
+           "同じ命令セット・同じイメージで動くため、構成を変えずに移せます");
 
-  shotTracked(s, "01_oci_instances.png", {
-    x: M, y: 1.7, w: 6.0, h: 2.3,
-    hint: "Shape=VM.Standard.A1.Flex・OCPU数・Running が写るように" });
   shotTracked(s, "03_docker_compose_ps.png", {
-    x: M + 6.4, y: 1.7, w: W - M * 2 - 6.4, h: 2.3,
+    x: M, y: 1.62, w: 6.05, h: 1.55,
     hint: "nginx / web / db の3コンテナが healthy であること" });
+  shotTracked(s, "04_env.png", {
+    x: M + 6.45, y: 1.62, w: W - M * 2 - 6.45, h: 1.55,
+    hint: "arm64 と Docker の版が写るように" });
   shotTracked(s, "12_make_test.png", {
-    x: M, y: 4.15, w: 6.0, h: 2.3,
-    hint: "150 passed が読めるように" });
+    x: M, y: 3.32, w: 6.05, h: 1.5,
+    hint: "148 passed, 2 skipped が読めるように" });
+  shotTracked(s, "17_excel_formula.png", {
+    x: M + 6.45, y: 3.32, w: W - M * 2 - 6.45, h: 1.5,
+    hint: "LibreOffice で数式を実評価した2件" });
+  shotTracked(s, "13_smoke.png", {
+    x: M, y: 4.97, w: 6.05, h: 1.5,
+    hint: "全項目OK が読めるように" });
   shotTracked(s, "06_schedule_ok.png", {
-    x: M + 6.4, y: 4.15, w: W - M * 2 - 6.4, h: 2.3,
-    hint: "アドレスバーにパブリックIPが写るように" });
+    x: M + 6.45, y: 4.97, w: W - M * 2 - 6.45, h: 1.5,
+    hint: "アドレスバーに稼働URLが写るように" });
 
   s.addText([
-    { text: "テスト150件　", options: { bold: true, color: C.deep } },
-    { text: "／　制約は独立実装の監査関数で再検査　" +
-            "／　Excelの数式はLibreOfficeで実評価　" +
-            "／　全SQLをPostgreSQL 18のパーサで検証",
+    { text: "テスト150件（うち2件は Excel の数式評価のため" +
+            "LibreOffice を含むホスト側で実行）　", options: { color: C.muted } },
+    { text: "／　制約はソルバーとは独立に実装した監査関数で再検査　" +
+            "／　全SQLを PostgreSQL 18 のパーサで構文検証",
       options: { color: C.muted } },
-  ], { x: M, y: 6.55, w: W - M * 2, h: 0.45,
-       fontFace: F.body, fontSize: 11, margin: 0 });
-  s.addNotes("30秒。『ローカルで動かしただけではない』ことを示す。" +
-             "アドレスバーのIPを指す。");
+  ], { x: M, y: 6.6, w: W - M * 2, h: 0.4,
+       fontFace: F.body, fontSize: 10, margin: 0 });
+  s.addNotes("30秒。3コンテナが healthy であること、" +
+             "テストが通っていること、HTTP 経由で全経路が応答していることを順に指す。");
 }
 
-// ================================================================ 12 まとめ
+// ========================================================== 13 まとめ
 {
   const s = pres.addSlide();
   s.background = { color: C.dark };
@@ -584,9 +635,50 @@ function shotTracked(slide, file, o) {
   s.addNotes("25秒。3段階の成長を一言ずつ。URLを示して終わる。");
 }
 
+// ========================================================= 14 紹介動画
+{
+  const s = pres.addSlide();
+  s.background = { color: C.dark };
+  s.addText("紹介動画", {
+    x: M, y: 0.4, w: W - M * 2, h: 0.6,
+    fontFace: F.head, fontSize: 28, bold: true, color: C.white, margin: 0 });
+  s.addText(hasVideo
+      ? "下の画面をクリックすると再生します（この pptx に埋め込み済み・通信不要）"
+      : "make pv で生成した MP4 を埋め込みます",
+    { x: M, y: 1.0, w: W - M * 2, h: 0.34,
+      fontFace: F.body, fontSize: 13, color: C.mint, margin: 0 });
+
+  if (hasVideo) {
+    // pptxgenjs の addMedia は mp4 を ppt/media/ へ実体ごと格納する。
+    // 動画共有サービスへの投稿が不要になり、通信環境に依存せず再生できる。
+    // ポスター画像を与えると、再生前に何の画面か分かる。
+    const poster = path.join(IMG, "06_schedule_ok.png");
+    const opts = { x: 2.35, y: 1.6, w: 8.6, h: 4.84,
+                   path: VIDEO, type: "video" };
+    if (fs.existsSync(poster)) { opts.cover = poster; }
+    s.addMedia(opts);
+    s.addText("再生できない場合は " + VIDEO + " を直接開いてください。", {
+      x: M, y: 6.6, w: W - M * 2, h: 0.35,
+      fontFace: F.body, fontSize: 11, color: "8FAAB3", margin: 0 });
+  } else {
+    s.addShape(pres.ShapeType.roundRect, {
+      x: 2.35, y: 1.6, w: 8.6, h: 4.84, rectRadius: 0.08,
+      fill: { color: "0F4C5C" },
+      line: { color: C.mint, width: 1, dashType: "dash" } });
+    s.addText("未生成\n\nmake pv を実行してから make slides を再実行", {
+      x: 2.35, y: 3.4, w: 8.6, h: 1.2, align: "center",
+      fontFace: F.body, fontSize: 15, color: C.mint, margin: 0 });
+  }
+  s.addNotes("動画は約3分。発表では冒頭30秒のみ再生し、" +
+             "残りは提出物として参照してもらう。");
+}
+
 // ---------------------------------------------------------------- 出力
 pres.writeFile({ fileName: OUT }).then(() => {
-  console.log(`出力: ${OUT}（${pres.slides ? pres.slides.length : 12}枚）`);
+  console.log(`出力: ${OUT}`);
+  console.log(hasVideo
+    ? `  紹介動画を埋め込みました: ${VIDEO}`
+    : `  紹介動画は未生成です（make pv）`);
   if (missing.length) {
     console.log(`\n未撮影のスクリーンショット ${missing.length} 件：`);
     missing.forEach((m) => console.log("  " + m));

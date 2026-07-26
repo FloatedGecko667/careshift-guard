@@ -106,8 +106,12 @@ step "コンテナの状態を記録"
   echo
   echo "=== 各コンテナのイメージとアーキテクチャ ==="
   for c in $(docker compose ps -q); do
+    # healthcheck を定義していないコンテナ（nginx）には
+    # .State.Health が存在しない。直接参照するとテンプレートが
+    # 実行時エラーになり、set -e でスクリプトごと止まる。
+    # if で存在を確かめてから参照する。
     docker inspect "$c" --format \
-      '{{.Name}}  image={{.Config.Image}}  arch={{.Platform}}  status={{.State.Health.Status}}'
+      '{{.Name}}  image={{.Config.Image}}  arch={{.Platform}}  status={{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}} (no healthcheck){{end}}'
   done
 } | tee "$RAW/compose_ps.txt"
 ok "$RAW/compose_ps.txt"
