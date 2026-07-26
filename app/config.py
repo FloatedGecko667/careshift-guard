@@ -49,6 +49,11 @@ def get_settings() -> Settings:
     if s.is_production and "change_me_in_production" in s.database_url:
         raise RuntimeError(
             "DATABASE_URL のパスワードが既定値のままです。本番では必ず変更してください。")
+    # 上限 300 秒は nginx/default.conf の /schedules/generate に与えた
+    # proxy_read_timeout 330s と対応している。
+    # ここを緩めるなら nginx 側も同時に伸ばすこと。
+    # 片方だけ伸ばすと、求解は成功しているのに 504 が返るという
+    # 原因を追いにくい壊れ方をする（実際に踏んだ）。
     if not 1 <= s.solver_time_limit <= 300:
         raise RuntimeError("SOLVER_TIME_LIMIT は 1〜300 秒の範囲で指定してください。")
     if not 1 <= s.solver_workers <= 64:

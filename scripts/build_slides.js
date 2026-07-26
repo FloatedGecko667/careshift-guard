@@ -34,6 +34,7 @@ const F = { head: "Cambria", body: "Calibri" };
 // 紹介動画はこのファイル自身に埋め込む（外部の動画共有サービスを使わない）。
 // 埋め込みが成功したかどうかで、まとめスライドの表記を切り替える。
 const VIDEO = "docs/紹介動画_CareShift_Guard.mp4";
+const SRT = "docs/紹介動画_CareShift_Guard.srt";
 const hasVideo = fs.existsSync(VIDEO);
 
 const LINKS = {
@@ -287,59 +288,49 @@ function shotTracked(slide, file, o) {
              "最後の『確定できない』は設計判断として強調する。");
 }
 
-// ======================================================= 5 デモ シフト表
+// ======================================================= 5 デモ 稼働画面
 {
   const s = pres.addSlide();
-  titleBar(s, "稼働画面　シフト表", "常勤換算と基準判定を同一画面に置いています");
-  shotTracked(s, "07_schedule_violation.png", {
-    x: M, y: 1.75, w: W - M * 2, h: 4.5,
-    hint: "赤いセル・違反一覧・無効化された確定ボタンが写るように撮る" });
-  s.addText("横31日分をスクロールしても、職員名と日付は固定表示されます。" +
-            "最下段が職種別の常勤換算（実際／必要）です。", {
-    x: M, y: 6.35, w: W - M * 2, h: 0.5,
-    fontFace: F.body, fontSize: 12, color: C.muted, margin: 0 });
-  s.addNotes("30秒。赤いセルを指して『この日は生活相談員が0.5、基準1.0に対して不足』" +
-             "と具体的に言う。");
-}
+  titleBar(s, "稼働画面　満たせる状態と満たせない状態",
+           "同じ職員構成でも、受け入れる利用者数によって基準の充足は変わります");
 
-// ====================================================== 6 月次と日別の乖離
-{
-  const s = pres.addSlide();
-  titleBar(s, "月次では適合、日別では8日が違反",
-           "この乖離が「気づけないまま減算される」原因です");
+  s.addText("平均利用者数 22名　→　全日で適合（求解 OPTIMAL・0.18秒）", {
+    x: M, y: 1.6, w: 6.05, h: 0.34, fontFace: F.body, fontSize: 12,
+    bold: true, color: C.deep, margin: 0 });
+  shotTracked(s, "06_schedule_ok.png", {
+    x: M, y: 2.0, w: 6.05, h: 2.4,
+    hint: "緑の帯（すべての日で人員配置基準を満たしています）が写るように" });
 
-  // 11_daily_check.png は横長・縦が短い。横幅いっぱいに置く。
-  shotTracked(s, "11_daily_check.png", {
-    x: M, y: 1.6, w: W - M * 2, h: 3.05,
-    hint: "必要／実際の2段と、最下段の判定（○×）が読めるように" });
+  s.addText("平均利用者数 60名　→　介護職員が20日分不足", {
+    x: M + 6.45, y: 1.6, w: W - M * 2 - 6.45, h: 0.34, fontFace: F.body,
+    fontSize: 12, bold: true, color: C.alert, margin: 0 });
+  shotTracked(s, "18_violation_fte.png", {
+    x: M + 6.45, y: 2.0, w: W - M * 2 - 6.45, h: 2.4,
+    hint: "介護職員の行が赤く（実際／必要）表示されている状態" });
 
-  const pts = [
-    ["月次の常勤換算では全職種が基準以上", "生活相談員1.2・看護職員1.4・介護職員8.7・機能訓練指導員1.4"],
-    ["しかし日別に見ると8日が不足", "兼務者が休む日に0.5や0.7へ落ち、必要な1.0を満たさない"],
-    ["表計算では日別まで検算しきれない", "31日×4職種＝124セルを毎月手で確認する運用は続かない"],
+  shotTracked(s, "16_publish_disabled.png", {
+    x: M, y: 4.62, w: W - M * 2, h: 0.95,
+    hint: "「確定して公開」が押せない状態と違反件数の帯" });
+
+  const pts5 = [
+    ["表示は「実際／必要」", "9.8 / 10.0 のように書くため、あと何人分足りないかが即座に分かる"],
+    ["違反が残るあいだは確定できない", "画面の無効化だけでなく、SQL 側でも違反0件を条件にしている"],
+    ["月が始まる前に判断できる", "応援職員の手配か、当日の受入数の調整かを事前に選べる"],
   ];
-  const pw = (W - M * 2 - 0.4 * 2) / 3;
-  pts.forEach(([t, d], i) => {
-    const x = M + (pw + 0.4) * i;
-    card(s, { x, y: 4.85, w: pw, h: 1.55,
-              fill: i === 1 ? "FDECEA" : C.white,
-              lineColor: i === 1 ? C.alert : C.line });
-    s.addText(t, { x: x + 0.22, y: 4.97, w: pw - 0.44, h: 0.5,
-                   fontFace: F.body, fontSize: 13, bold: true,
-                   color: i === 1 ? C.alert : C.dark, margin: 0 });
-    s.addText(d, { x: x + 0.22, y: 5.5, w: pw - 0.44, h: 0.8,
-                   fontFace: F.body, fontSize: 11, color: C.ink, margin: 0,
+  const pw5 = (W - M * 2 - 0.35 * 2) / 3;
+  pts5.forEach(([t, d], i) => {
+    const x = M + (pw5 + 0.35) * i;
+    s.addText(t, { x, y: 5.75, w: pw5, h: 0.32, fontFace: F.body,
+                   fontSize: 12, bold: true, color: C.dark, margin: 0 });
+    s.addText(d, { x, y: 6.08, w: pw5, h: 0.8, fontFace: F.body,
+                   fontSize: 11, color: C.muted, margin: 0,
                    lineSpacingMultiple: 1.15 });
   });
-  s.addText("※ 出力した Excel の「日別の基準判定」シートをそのまま貼っています。" +
-            "数値はすべて数式で、開けば検算できます。", {
-    x: M, y: 6.55, w: W - M * 2, h: 0.4,
-    fontFace: F.body, fontSize: 10, color: C.muted, margin: 0 });
-  s.addNotes("30秒。ここが提案の核心。月次だけ見ていると適合に見えることを先に言い、" +
-             "×の並びを指す。");
+  s.addNotes("35秒。左右を見比べさせる。『職員を増やさずに受入を増やすと、" +
+             "どの日が崩れるかが事前に分かる』が要点。");
 }
 
-// ========================================================= 7 デモ 帳票
+// ========================================================= 6 デモ 帳票
 {
   const s = pres.addSlide();
   titleBar(s, "稼働画面　勤務形態一覧表",
@@ -366,6 +357,44 @@ function shotTracked(slide, file, o) {
     ny += 1.11;
   });
   s.addNotes("30秒。『数式で書いてあるので担当者がその場で検算できる』が要点。");
+}
+
+// ======================================================= 7 日別の基準判定
+{
+  const s = pres.addSlide();
+  titleBar(s, "同じブックの2枚目　日別の基準判定",
+           "月次では適合、日別では8日が違反。この乖離が「気づけないまま減算される」原因です");
+
+  // 11_daily_check.png は横長・縦が短い。横幅いっぱいに置く。
+  shotTracked(s, "11_daily_check.png", {
+    x: M, y: 1.6, w: W - M * 2, h: 3.05,
+    hint: "必要／実際の2段と、最下段の判定（○×）が読めるように" });
+
+  const pts = [
+    ["月次の常勤換算では全職種が基準以上", "生活相談員1.2・看護職員1.4・介護職員8.7・機能訓練指導員1.4"],
+    ["しかし日別に見ると8日が不足", "兼務者が休む日に0.5や0.7へ落ち、必要な1.0を満たさない"],
+    ["表計算では日別まで検算しきれない", "31日×4職種＝124セルを毎月手で確認する運用は続かない"],
+  ];
+  const pw = (W - M * 2 - 0.4 * 2) / 3;
+  pts.forEach(([t, d], i) => {
+    const x = M + (pw + 0.4) * i;
+    card(s, { x, y: 4.85, w: pw, h: 1.55,
+              fill: i === 1 ? "FDECEA" : C.white,
+              lineColor: i === 1 ? C.alert : C.line });
+    s.addText(t, { x: x + 0.22, y: 4.97, w: pw - 0.44, h: 0.5,
+                   fontFace: F.body, fontSize: 13, bold: true,
+                   color: i === 1 ? C.alert : C.dark, margin: 0 });
+    s.addText(d, { x: x + 0.22, y: 5.5, w: pw - 0.44, h: 0.8,
+                   fontFace: F.body, fontSize: 11, color: C.ink, margin: 0,
+                   lineSpacingMultiple: 1.15 });
+  });
+  s.addText("※ 出力した Excel の「日別の基準判定」シートをそのまま貼っています" +
+            "（サンプル出力：職員18名・平均利用者22名）。" +
+            "数値はすべて数式で、開けば検算できます。", {
+    x: M, y: 6.55, w: W - M * 2, h: 0.4,
+    fontFace: F.body, fontSize: 10, color: C.muted, margin: 0 });
+  s.addNotes("30秒。ここが提案の核心。月次だけ見ていると適合に見えることを先に言い、" +
+             "×の並びを指す。");
 }
 
 // ========================================================== 8 技術構成
@@ -652,11 +681,20 @@ function shotTracked(slide, file, o) {
     // pptxgenjs の addMedia は mp4 を ppt/media/ へ実体ごと格納する。
     // 動画共有サービスへの投稿が不要になり、通信環境に依存せず再生できる。
     // ポスター画像を与えると、再生前に何の画面か分かる。
+    // cover はファイルパスではなく base64 のデータURIしか受け付けない。
+    // パスを渡すと addMedia が例外を投げる。
     const poster = path.join(IMG, "06_schedule_ok.png");
     const opts = { x: 2.35, y: 1.6, w: 8.6, h: 4.84,
                    path: VIDEO, type: "video" };
-    if (fs.existsSync(poster)) { opts.cover = poster; }
+    if (fs.existsSync(poster)) {
+      opts.cover = "data:image/png;base64," +
+                   fs.readFileSync(poster).toString("base64");
+    }
     s.addMedia(opts);
+    s.addText("説明は各場面に焼き込み済み。切り替えたい場合は " + SRT +
+              " をキャプションとして読み込めます。", {
+      x: M, y: 6.28, w: W - M * 2, h: 0.35,
+      fontFace: F.body, fontSize: 11, color: C.mint, margin: 0 });
     s.addText("再生できない場合は " + VIDEO + " を直接開いてください。", {
       x: M, y: 6.6, w: W - M * 2, h: 0.35,
       fontFace: F.body, fontSize: 11, color: "8FAAB3", margin: 0 });
