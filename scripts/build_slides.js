@@ -404,26 +404,25 @@ function shotTracked(slide, file, o) {
            "「スマートフォンから希望を出せます」と書く以上、" +
            "実際に片手で操作できなければ意味がありません");
 
-  s.addText("希望シフト　日付を1回押すだけ", {
-    x: M, y: 1.6, w: 3.5, h: 0.34, fontFace: F.body, fontSize: 12,
-    bold: true, color: C.deep, margin: 0 });
-  shotTracked(s, "08_requests_mobile.png", {
-    x: M, y: 2.0, w: 3.5, h: 4.3,
-    hint: "カレンダーと下端タブが写るように（画面幅 600px 程度）" });
-
-  s.addText("確定前は職員に見せない", {
-    x: M + 3.75, y: 1.6, w: 1.7, h: 0.34, fontFace: F.body, fontSize: 10.5,
-    bold: true, color: C.deep, margin: 0 });
-  shotTracked(s, "25_staff_pending.png", {
-    x: M + 3.75, y: 2.0, w: 1.7, h: 4.3,
-    hint: "職員として開いたときの未確定の表示と下端タブ" });
-
-  s.addText("管理者は外出先で日別判定", {
-    x: M + 5.55, y: 1.6, w: 1.7, h: 0.34, fontFace: F.body, fontSize: 10.5,
-    bold: true, color: C.deep, margin: 0 });
-  shotTracked(s, "27_admin_daily_mobile.png", {
-    x: M + 5.55, y: 2.0, w: 1.7, h: 4.3,
-    hint: "狭い画面での日別の充足状況とタブ4つ" });
+  // 職員の1か月の流れを左から順に4枚で示す
+  const shots = [
+    ["① 希望を出す", "08_requests_mobile.png",
+     "カレンダーと下端タブが写るように（画面幅 600px 程度）"],
+    ["② 確定前は見せない", "25_staff_pending.png",
+     "職員として開いたときの未確定の表示と下端タブ"],
+    ["③ 確定後は自分の予定", "26_my_shift_mobile.png",
+     "日付・勤務区分・時間帯・実働時間の縦一覧"],
+    ["管理者：外出先で日別判定", "27_admin_daily_mobile.png",
+     "狭い画面での日別の充足状況とタブ4つ"],
+  ];
+  const sw = 1.72, sgap = 0.11;
+  shots.forEach(([label, file, hint], i) => {
+    const sx = M + (sw + sgap) * i;
+    s.addText(label, { x: sx, y: 1.6, w: sw, h: 0.32, fontFace: F.body,
+                       fontSize: 10.5, bold: true,
+                       color: i === 3 ? C.muted : C.deep, margin: 0 });
+    shotTracked(s, file, { x: sx, y: 1.96, w: sw, h: 4.34, hint });
+  });
 
   const rowsStaff = [
     ["下端の固定タブに集約",
@@ -438,14 +437,14 @@ function shotTracked(slide, file, o) {
      "職員には不安だけを与える"],
     ["確定後に「自分のシフト」を縦一覧で出す",
      "日付・勤務区分・時間帯・実働時間を1行で読める。" +
-     "確定前は右の画面のように内容を出さない"],
+     "確定前は②のように内容を出さない"],
     ["色だけに頼らない／44px以上",
      "色覚特性のある職員に伝わらないため文字も併記。" +
      "入力欄は16px以上（下回ると iOS が勝手に拡大する）"],
   ];
   // 6項目を 1.60〜6.35 に収める。行送りは (6.35-1.60)/6 = 0.79
   let ys = 1.60;
-  const bx = M + 7.6;
+  const bx = M + 7.45;
   const gap = 0.79;
   rowsStaff.forEach(([t, d]) => {
     card(s, { x: bx, y: ys, w: W - M - bx, h: gap - 0.09 });
