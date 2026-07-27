@@ -1,13 +1,26 @@
 {% extends "base.html" %}
 {% block title %}マスタ管理｜CareShift Guard{% endblock %}
 
+{% block head %}
+<style>
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+             gap:12px}
+  @media (max-width:719px){
+    .form-grid{grid-template-columns:1fr}
+    /* 退職日の入力は日付欄とボタンで幅を取るため縦に積む */
+    table.list.cards td[data-label="退職の登録"] form{flex-wrap:wrap}
+    table.list.cards td[data-label="退職の登録"] input{flex:1 1 100%}
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>マスタ管理</h1>
 
 {# ------------------------------------------------------------ 職員 #}
 <div class="card">
   <h2>職員（{{ staff | length }}名）</h2>
-  <table class="list">
+  <table class="list cards">
     <tr>
       <th style="width:16%">氏名</th>
       <th style="width:13%">職種</th>
@@ -20,19 +33,19 @@
     </tr>
     {%- for s in staff %}
     <tr>
-      <td>{{ s.name }}</td>
-      <td>{{ job_labels.get(s.job_type, s.job_type) }}</td>
-      <td>{{ s.employment_name }}</td>
-      <td>{{ (s.weekly_minutes / 60) | round(1) }}h</td>
-      <td>{{ s.qualifications | join('、') if s.qualifications else '—' }}</td>
-      <td>
+      <td data-label="氏名">{{ s.name }}</td>
+      <td data-label="職種">{{ job_labels.get(s.job_type, s.job_type) }}</td>
+      <td data-label="雇用区分">{{ s.employment_name }}</td>
+      <td data-label="週所定">{{ (s.weekly_minutes / 60) | round(1) }}h</td>
+      <td data-label="資格・修了研修">{{ s.qualifications | join('、') if s.qualifications else '—' }}</td>
+      <td data-label="兼務">
         {%- if s.secondary_job_type %}
           {{ job_labels.get(s.secondary_job_type, s.secondary_job_type) }}
           {{ (s.secondary_ratio * 100) | round | int }}%
         {%- else %}—{% endif %}
       </td>
-      <td>{{ s.hired_on }}</td>
-      <td>
+      <td data-label="入職日">{{ s.hired_on }}</td>
+      <td data-label="退職の登録">
         <form method="post" action="/masters/staff/{{ s.staff_id }}/retire"
               style="display:flex;gap:4px">
           <input type="date" name="retired_on" required style="padding:3px">
@@ -57,7 +70,7 @@
 <div class="card">
   <h2>職員を追加する</h2>
   <form method="post" action="/masters/staff">
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+    <div class="form-grid">
       <div>
         <label for="name">氏名</label>
         <input id="name" name="name" required maxlength="60">
@@ -117,7 +130,7 @@
 {# ------------------------------------------------------------ 勤務区分 #}
 <div class="card">
   <h2>勤務区分（{{ patterns | length }}件）</h2>
-  <table class="list">
+  <table class="list cards">
     <tr>
       <th style="width:8%">記号</th><th style="width:16%">名称</th>
       <th style="width:14%">開始</th><th style="width:14%">終了</th>
@@ -126,15 +139,15 @@
     </tr>
     {%- for p in patterns %}
     <tr>
-      <td><b>{{ p.code }}</b></td>
-      <td>{{ p.name }}</td>
-      <td>{% if p.is_rest %}—{% else %}
+      <td data-label="記号"><b>{{ p.code }}</b></td>
+      <td data-label="名称">{{ p.name }}</td>
+      <td data-label="開始">{% if p.is_rest %}—{% else %}
           {{ '%02d:%02d' % (p.start_minute // 60, p.start_minute % 60) }}{% endif %}</td>
-      <td>{% if p.is_rest %}—{% else %}
+      <td data-label="終了">{% if p.is_rest %}—{% else %}
           {{ '%02d:%02d' % (p.end_minute // 60, p.end_minute % 60) }}{% endif %}</td>
-      <td>{{ p.break_minutes }}分</td>
-      <td>{{ (p.work_minutes / 60) | round(1) }}h</td>
-      <td>
+      <td data-label="休憩">{{ p.break_minutes }}分</td>
+      <td data-label="実働">{{ (p.work_minutes / 60) | round(1) }}h</td>
+      <td data-label="区分">
         {%- if p.is_rest %}公休{% elif p.is_night %}夜勤{% else %}日勤帯{% endif %}
       </td>
     </tr>

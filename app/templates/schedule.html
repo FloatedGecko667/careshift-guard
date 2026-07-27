@@ -88,6 +88,58 @@
   .vio th{background:var(--head)}
   .vio .num{text-align:right;font-variant-numeric:tabular-nums}
   .vio .short{color:var(--err);font-weight:700}
+
+  /* ------------------------------------------------------------------
+     狭い画面向けの一覧
+     ------------------------------------------------------------------ */
+  .mylist,.daylist{list-style:none;margin:10px 0 0;padding:0}
+  .mylist li,.daylist li{display:flex;gap:10px;align-items:center;
+        border:1px solid var(--line);border-radius:10px;background:#fff;
+        padding:8px 10px;margin-bottom:6px;min-height:52px}
+  .mylist li.rest{background:#f5f6f8;color:var(--muted)}
+  .mylist li.missed{background:#fdf6e3;border-color:#d8b64a}
+  .mylist .d,.daylist .d{flex:0 0 46px;text-align:center;font-size:17px;
+        font-weight:700;line-height:1.05}
+  .mylist .d small,.daylist .d small{display:block;font-size:10px;font-weight:600;
+        color:var(--muted)}
+  .mylist .d.sat,.daylist .d.sat{color:#1f6feb}
+  .mylist .d.sun,.daylist .d.sun{color:#c0392b}
+  .mylist .w{flex:1 1 auto;display:flex;flex-direction:column}
+  .mylist .w b{font-size:14px}
+  .mylist .w .t{font-size:11.5px;color:var(--muted);
+        font-variant-numeric:tabular-nums}
+  .mylist .h{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--muted);
+        font-variant-numeric:tabular-nums}
+
+  .daylist li.ng{background:var(--err-bg);border-color:var(--err)}
+  .daylist li.warn{background:#fdf6e3;border-color:#d8b64a}
+  .daylist li.closed{background:#f0f2f5;color:var(--muted)}
+  .daylist .s{flex:0 0 auto;font-size:12px;font-weight:700}
+  .daylist li.ng .s{color:var(--err)}
+  .daylist .j{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px;
+        font-size:10.5px;font-style:normal}
+  .daylist .j em{font-style:normal;background:#fff;border:1px solid var(--line);
+        border-radius:9px;padding:1px 7px;font-variant-numeric:tabular-nums}
+  .daylist .j em.ng{border-color:var(--err);color:var(--err);font-weight:700}
+  .daylist .j em.warn{border-color:#d8b64a;color:#8a6d1f}
+
+  /* 違反一覧と手修正フォームは狭い画面で積む */
+  @media (max-width:719px){
+    .sched-head .meta{margin-left:0;text-align:left;width:100%}
+    .bar{gap:8px}
+    .bar form{flex-wrap:wrap;width:100%}
+    .bar .field{flex:1 1 130px}
+    .bar input,.bar select{width:100%}
+    .bar .btn{flex:1 1 100%}
+    .vio table,.vio thead,.vio tbody,.vio tr,.vio th,.vio td{display:block}
+    .vio thead{display:none}
+    .vio tr{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;
+            padding:6px 10px}
+    .vio td{border:none;padding:3px 0;display:flex;gap:8px}
+    .vio td::before{content:attr(data-label);flex:0 0 32%;color:var(--muted);
+                    font-size:11px;font-weight:700}
+    .vio .num{text-align:left}
+  }
 </style>
 {% endblock %}
 
@@ -96,10 +148,16 @@
   <h1>{{ office.name }}</h1>
   <span class="month">{{ schedule.month_label }}</span>
   <span class="badge {{ schedule.status }}">{{ schedule.status_label }}</span>
+  {%- if is_admin | default(false) %}
+  {#
+    求解の状態と目的関数は運用の判断材料であり、職員には意味を持たない。
+    職員に見せると「自分のシフトを見に来たのに読めない数字が並ぶ」だけになる。
+  #}
   <div class="meta">
     求解 {{ schedule.solver_status }}／{{ schedule.solve_seconds }} 秒
     ・目的関数 {{ "{:,}".format(schedule.objective) }}
   </div>
+  {%- endif %}
 </div>
 
 {% if is_admin | default(false) %}
@@ -140,6 +198,11 @@
 </div>
 {% endif %}
 
+{% if is_admin | default(false) %}
+{#
+  基準充足の状況は事業所の経営情報である。
+  対処できるのは管理者だけであり、職員に見せても不安を与えるだけになる。
+#}
 {% if stats.violation_count %}
   <div class="alert err">
     <b>人員配置基準の違反が {{ stats.violation_count }} 件あります。</b>
@@ -160,8 +223,94 @@
     </div>
   </div>
 {% endif %}
+{% endif %}
 
-<div class="scroll">
+{#
+  職員には確定前のシフトを見せない。
+  下書きの段階で配ってしまうと、後から変わったときに現場が混乱する。
+  実務でも勤務表は確定してから配布する。
+#}
+{% if not (is_admin | default(false)) and schedule.status != 'published' %}
+<div class="card">
+  <h2>{{ schedule.month_label }}のシフトはまだ確定していません</h2>
+  <p class="muted" style="margin-top:-4px">
+    管理者が確定して公開すると、この画面で確認できるようになります。
+    希望の追加や取り消しは「希望を出す」から今のうちにできます。
+  </p>
+  <p style="margin-top:10px">
+    <a class="btn primary" href="/requests">希望を出す</a>
+  </p>
+</div>
+{% else %}
+
+{#
+  ------------------------------------------------------------------
+  狭い画面向けの表示
+  ------------------------------------------------------------------
+  31日×職員数の表はスマートフォンでは読めない。横スクロールする表を
+  片手で追うのは現実的でないため、縦に並べた一覧に組み替える。
+
+    ・職員がログインしている場合は「自分のシフト」だけを出す。
+      他人の勤務は職員の主目的ではない。
+    ・職員に紐づかない管理者アカウントの場合は日別の充足状況を出す。
+      外出先で「今月どの日が危ないか」を確かめるのが主目的になる。
+  出し分けは CSS で行う（利用者エージェントの判定は当たらない）。
+#}
+<div class="only-narrow">
+  {%- if my_row %}
+  <div class="card" style="margin-bottom:12px">
+    <h2 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      {{ my_row.name }} さんのシフト
+      <span class="muted">{{ my_row.job_label }}／{{ my_row.employment }}</span>
+    </h2>
+    <p class="muted" style="margin-top:-4px">
+      当月の勤務時間の合計は {{ my_row.total_hours }} 時間です。
+      黄色は希望が反映できなかった日です。
+    </p>
+    <ul class="mylist">
+      {%- for c in my_row.cells %}
+      {%- set day = days[loop.index0] %}
+      <li class="{{ 'rest' if c.is_rest }}{{ ' missed' if c.pref_missed }}">
+        <span class="d {{ day.cls }}">{{ day.n }}<small>{{ day.weekday }}</small></span>
+        <span class="w">
+          <b>{{ c.name }}</b>
+          {%- if c.time_label %}<span class="t">{{ c.time_label }}</span>{% endif %}
+        </span>
+        <span class="h">{% if c.hours %}{{ c.hours }}h{% endif %}</span>
+      </li>
+      {%- endfor %}
+    </ul>
+  </div>
+  {%- else %}
+  <div class="card" style="margin-bottom:12px">
+    <h2>日別の充足状況</h2>
+    <p class="muted" style="margin-top:-4px">
+      職員別の表は画面の広い端末で確認してください。
+      ここでは日ごとの判定だけを示します。
+    </p>
+    <ul class="daylist">
+      {%- for d in day_summary %}
+      <li class="{{ d.state }}">
+        <span class="d {{ d.cls }}">{{ d.n }}<small>{{ d.weekday }}</small></span>
+        <span class="s">
+          {%- if d.closed %}休業日
+          {%- elif d.state == 'ng' %}基準を満たしていない
+          {%- elif d.state == 'warn' %}余裕が少ない
+          {%- else %}適合{% endif %}
+        </span>
+        <span class="j">
+          {%- for j in d.jobs %}
+          <em class="{{ j.cls }}">{{ j.job_label }} {{ j.actual }}/{{ j.required }}</em>
+          {%- endfor %}
+        </span>
+      </li>
+      {%- endfor %}
+    </ul>
+  </div>
+  {%- endif %}
+</div>
+
+<div class="scroll only-wide">
 <table class="grid">
   <thead>
     <tr>
@@ -279,16 +428,17 @@
     </tr>
     {%- for v in violations %}
     <tr>
-      <td>{{ v.date_label }}</td>
-      <td>{{ v.job_label }}</td>
-      <td>{{ v.kind_label }}</td>
-      <td class="num">{{ v.required }}</td>
-      <td class="num">{{ v.actual }}</td>
-      <td class="num short">{{ v.shortage }}</td>
-      <td>{{ v.hint }}</td>
+      <td data-label="日付">{{ v.date_label }}</td>
+      <td data-label="職種">{{ v.job_label }}</td>
+      <td data-label="判定区分">{{ v.kind_label }}</td>
+      <td class="num" data-label="必要">{{ v.required }}</td>
+      <td class="num" data-label="実際">{{ v.actual }}</td>
+      <td class="num short" data-label="不足">{{ v.shortage }}</td>
+      <td data-label="対応の目安">{{ v.hint }}</td>
     </tr>
     {%- endfor %}
   </table>
 </div>
+{% endif %}
 {% endif %}
 {% endblock %}

@@ -33,7 +33,7 @@
 </div>
 
 <div class="card">
-  <table class="list">
+  <table class="list cards">
     <thead>
       <tr>
         <th style="width:150px">日時</th>
@@ -47,22 +47,22 @@
     <tbody>
       {% for r in rows %}
       <tr>
-        <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-        <td>{{ r.actor_email }}</td>
-        <td>
+        <td data-label="日時">{{ r.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td data-label="実行者">{{ r.actor_email }}</td>
+        <td data-label="操作">
           {{ labels.get(r.action, r.action) }}
           <div class="muted" style="font-family:monospace">{{ r.action }}</div>
         </td>
-        <td>
+        <td data-label="対象">
           {% if r.target_type %}{{ r.target_type }}
             {%- if r.target_id %} #{{ r.target_id }}{% endif %}
           {% else %}<span class="muted">—</span>{% endif %}
         </td>
-        <td>{{ r.summary }}</td>
-        <td class="muted">{{ r.ip or '—' }}</td>
+        <td data-label="内容">{{ r.summary }}</td>
+        <td class="muted" data-label="接続元">{{ r.ip or '—' }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="6" class="muted">記録がありません。</td></tr>
+      <tr><td colspan="6" class="muted" data-label="">記録がありません。</td></tr>
       {% endfor %}
     </tbody>
   </table>

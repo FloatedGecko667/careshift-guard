@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 import io
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Form, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
@@ -95,7 +95,27 @@ def show(request: Request, user: CurrentUserDep,
     ctx["avg_expected_users"] = avg
     # 手修正フォームの選択肢。公休も選べるようにする
     ctx["pattern_options"] = patterns
+    # 狭い画面では31日×職員数の表を読めない。
+    # 職員には自分の行だけを縦に並べた一覧を出す。
+    ctx["my_staff_id"] = user.staff_id
+    ctx["my_row"] = _find_row(ctx["groups"], user.staff_id)
     return render(request, "schedule.html", ctx)
+
+
+def _find_row(groups: list[dict[str, Any]],
+              staff_id: int | None) -> dict[str, Any] | None:
+    """ログイン中の職員に対応する行を探す。
+
+    管理者アカウントは職員に紐づいていないことがある（staff_id が None）。
+    その場合は None を返し、画面側は日別サマリーを出す。
+    """
+    if staff_id is None:
+        return None
+    for g in groups:
+        for row in g["rows"]:
+            if int(row["id"]) == int(staff_id):
+                return {**row, "job_label": g["job_label"]}
+    return None
 
 
 def _restore(prob, mapping, schedule):

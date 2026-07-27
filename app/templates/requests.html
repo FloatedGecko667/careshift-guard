@@ -1,26 +1,72 @@
 {#
-  希望シフト入力（画面No.3）。
-  スマートフォンでの操作を前提としたレイアウトにする。
-  職員は自分の希望しか登録できない。管理者は代理入力できる。
+  希望シフト入力（画面No.3）。職員が最もよく開く画面。
+
+  設計方針
+    ・カレンダー上の日付を1回押すだけで希望休が付く／外れる。
+      同種の製品も職員側の操作は「日付を押す」に集約している。
+      以前は日付ごとに「区分を選ぶ→登録を押す」の2手が必要で、
+      31日分を入れるには手数が多すぎた。
+    ・押した結果は色と文字の両方で示す。色だけでは色覚特性のある
+      職員に伝わらない。
+    ・htmx があればカレンダーの該当セルだけを差し替える。
+      無ければ通常のフォーム送信になり、機能は失われない。
+    ・「勤務不可」と「勤務区分の希望」は頻度が低いので下の詳細欄へ回す。
+      よく使う操作を上に、まれな操作を下に置く。
 #}
 {% extends "base.html" %}
 {% block title %}希望シフト｜CareShift Guard{% endblock %}
 
 {% block head %}
 <style>
-  .days{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px}
-  .day-row{border:1px solid var(--line);border-radius:7px;padding:8px 10px;
-           background:#fff;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .day-row.closed{background:#eceff3;color:#9aa3ad}
-  .day-row .d{font-weight:700;min-width:64px}
-  .day-row .cur{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
-  .cur.off{background:#fdf6e3;color:#8a6d1f}
-  .cur.pattern{background:#e8f0fe;color:var(--accent)}
-  .cur.unavailable{background:var(--err-bg);color:var(--err)}
-  .day-row form{display:flex;gap:5px;align-items:center;margin:0;margin-left:auto}
-  .day-row select{width:auto;padding:4px 6px;font-size:11.5px}
-  .day-row .btn{padding:4px 9px;font-size:11.5px}
-  .sat{color:#1f6feb} .sun{color:#c0392b}
+  /* カレンダー。7列固定。列幅は画面幅に追従させる */
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+  .cal .wd{text-align:center;font-size:11px;font-weight:700;color:var(--muted);
+           padding-bottom:2px}
+  .cal .wd.sat{color:#1f6feb} .cal .wd.sun{color:#c0392b}
+  .cal .pad{visibility:hidden}
+
+  /* 1日ぶんのセル。押せる領域を大きく取る */
+  .cell{margin:0}
+  .cell button{width:100%;min-height:56px;border:1px solid var(--line);
+               border-radius:10px;background:#fff;cursor:pointer;
+               display:flex;flex-direction:column;align-items:center;
+               justify-content:center;gap:1px;padding:4px 2px;
+               font-family:inherit;color:var(--fg)}
+  .cell button:hover{background:#f2f6fb}
+  .cell .n{font-size:15px;font-weight:700;line-height:1.1}
+  .cell .tag{font-size:10px;font-weight:700;line-height:1.2}
+  .cell.sat .n{color:#1f6feb} .cell.sun .n{color:#c0392b}
+
+  /* 状態。色と文字の両方で示す */
+  .cell.off button{background:#fdf6e3;border-color:#d8b64a;
+                   box-shadow:inset 0 0 0 1px #d8b64a}
+  .cell.off .tag{color:#8a6d1f}
+  .cell.unavailable button{background:var(--err-bg);border-color:var(--err)}
+  .cell.unavailable .tag{color:var(--err)}
+  .cell.pattern button{background:#e8f0fe;border-color:var(--accent)}
+  .cell.pattern .tag{color:var(--accent)}
+  .cell.closed button{background:#eceff3;color:#9aa3ad;cursor:not-allowed;
+                      box-shadow:none;border-style:dashed}
+
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;font-size:11px;
+          color:var(--muted)}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;
+            border:1px solid var(--line);vertical-align:-2px;margin-right:4px}
+  .legend .l-off i{background:#fdf6e3;border-color:#d8b64a}
+  .legend .l-un i{background:var(--err-bg);border-color:var(--err)}
+  .legend .l-pt i{background:#e8f0fe;border-color:var(--accent)}
+  .legend .l-cl i{background:#eceff3}
+
+  .count{display:inline-block;background:var(--head);border-radius:11px;
+         padding:2px 10px;font-size:11px;font-weight:700;color:var(--fg)}
+
+  .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+               gap:12px;align-items:end}
+  @media (max-width:719px){
+    .cal{gap:4px}
+    .cell button{min-height:60px}
+    .detail-grid{grid-template-columns:1fr}
+  }
 </style>
 {% endblock %}
 
@@ -30,10 +76,10 @@
 {% if current_user and current_user.is_admin %}
 <div class="card">
   <h2>代理入力する職員を選ぶ</h2>
-  <form method="get" action="/requests" style="display:flex;gap:8px;align-items:flex-end">
+  <form method="get" action="/requests" class="detail-grid">
     <input type="hidden" name="year" value="{{ year }}">
     <input type="hidden" name="month" value="{{ month }}">
-    <div style="min-width:220px">
+    <div>
       <label for="sid">職員</label>
       <select id="sid" name="staff_id" required>
         {%- for s in staff %}
@@ -43,7 +89,7 @@
         {%- endfor %}
       </select>
     </div>
-    <button class="btn" type="submit">表示</button>
+    <div><button class="btn" type="submit">表示</button></div>
   </form>
 </div>
 {% endif %}
@@ -60,45 +106,99 @@
 </div>
 {% else %}
 
+{% set filled = days | selectattr('request') | list | length %}
 <div class="card">
-  <p class="muted">
-    希望休と希望勤務区分はソフト制約です。人員配置基準を満たすことが優先され、
-    どうしても両立しない場合は反映されないことがあります。
-    反映できなかった希望はシフト表上で色分けして表示されます。
-    「勤務不可」は承認済みの休暇などに使い、こちらは必ず守られます。
+  <h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    日付を押して希望休を出す
+    <span class="count">登録済み {{ filled }} 件</span>
+  </h2>
+  <p class="muted" style="margin-top:-4px">
+    もう一度押すと取り消せます。希望休はソフト制約です。
+    人員配置基準を満たすことが優先され、どうしても両立しない場合は
+    反映されないことがあります。反映できなかった希望はシフト表で色分けされます。
   </p>
 
-  <div class="days" style="margin-top:12px">
+  <div class="cal" style="margin-top:12px">
+    {# 曜日の見出し。日本の勤務表は月曜始まりが一般的である #}
+    {%- for w in ['月','火','水','木','金','土','日'] %}
+      <div class="wd {{ 'sat' if w == '土' else ('sun' if w == '日' else '') }}">{{ w }}</div>
+    {%- endfor %}
+
+    {# 1日の曜日までを空白で埋める #}
+    {%- if days %}
+      {%- set lead = ['月','火','水','木','金','土','日'].index(days[0].weekday) %}
+      {%- for _ in range(lead) %}<div class="pad"></div>{% endfor %}
+    {%- endif %}
+
     {#
       1日分は partials/request_row.html に切り出している。
-      htmx が読み込まれていれば、登録・取消の際にこの断片だけが
-      差し替わる。読み込まれていなければ通常のフォーム送信になり、
+      htmx が読み込まれていれば、押した日のセルだけが差し替わる。
+      読み込まれていなければ通常のフォーム送信になり、
       全画面が再描画されるだけで機能は失われない。
     #}
     {%- for d in days %}
       {% include "partials/request_row.html" %}
     {%- endfor %}
   </div>
+
+  <div class="legend">
+    <span class="l-off"><i></i>希望休</span>
+    <span class="l-un"><i></i>勤務不可（必ず守られる）</span>
+    <span class="l-pt"><i></i>勤務区分の希望</span>
+    <span class="l-cl"><i></i>休業日</span>
+  </div>
 </div>
 
-{% if patterns %}
 <div class="card">
-  <h2>勤務区分を指定して希望する</h2>
-  <form method="post" action="/requests"
-        style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+  <h2>勤務不可・勤務区分の希望を出す</h2>
+  <p class="muted" style="margin-top:-4px">
+    「勤務不可」は承認済みの休暇などに使い、こちらは必ず守られます。
+    使う頻度は低いため、この欄から登録します。
+  </p>
+
+  {#
+    種類ごとにフォームを分けている。
+    1つのフォームで種類を選ばせると、勤務区分の欄を送るか送らないかを
+    切り替える必要があり、JavaScript なしでは実現できない。
+    経路側は「区分の希望のときだけ区分を指定する」ことを厳しく検査しており
+    （app/routers/requests.py）、その約束をテンプレート側でも守る。
+  #}
+  <form method="post" action="/requests" class="detail-grid" style="margin-top:10px">
+    <input type="hidden" name="request_type" value="unavailable">
+    {%- if current_user and current_user.is_admin %}
+    <input type="hidden" name="staff_id" value="{{ target_staff_id }}">
+    {%- endif %}
+    <div>
+      <label for="ud">勤務不可にする日</label>
+      <select id="ud" name="target_date" required>
+        {%- for d in days %}{% if not d.closed %}
+        <option value="{{ d.date }}">{{ d.n }}日（{{ d.weekday }}）</option>
+        {%- endif %}{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="un">備考</label>
+      <input id="un" name="note" maxlength="200"
+             placeholder="有給休暇の承認済み など">
+    </div>
+    <div><button class="btn" type="submit">勤務不可で登録</button></div>
+  </form>
+
+  {%- if patterns %}
+  <form method="post" action="/requests" class="detail-grid" style="margin-top:14px">
     <input type="hidden" name="request_type" value="pattern">
     {%- if current_user and current_user.is_admin %}
     <input type="hidden" name="staff_id" value="{{ target_staff_id }}">
     {%- endif %}
-    <div style="min-width:160px">
-      <label for="pd">日付</label>
+    <div>
+      <label for="pd">勤務区分を希望する日</label>
       <select id="pd" name="target_date" required>
         {%- for d in days %}{% if not d.closed %}
         <option value="{{ d.date }}">{{ d.n }}日（{{ d.weekday }}）</option>
         {%- endif %}{% endfor %}
       </select>
     </div>
-    <div style="min-width:160px">
+    <div>
       <label for="pp">勤務区分</label>
       <select id="pp" name="shift_pattern_id" required>
         {%- for p in patterns %}
@@ -106,17 +206,19 @@
         {%- endfor %}
       </select>
     </div>
-    <div style="min-width:200px">
+    <div>
       <label for="pn">備考</label>
       <input id="pn" name="note" maxlength="200"
              placeholder="子の学校行事のため早く上がりたい など">
     </div>
-    <button class="btn primary" type="submit">登録</button>
+    <div><button class="btn" type="submit">区分の希望を登録</button></div>
   </form>
-  <p class="muted" style="margin-top:8px">
+  {%- endif %}
+
+  <p class="muted" style="margin-top:10px">
     備考は管理者が目視で確認します。自動では制約に反映されません。
+    登録した内容は上のカレンダーに反映され、押せば取り消せます。
   </p>
 </div>
-{% endif %}
 {% endif %}
 {% endblock %}

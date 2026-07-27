@@ -200,6 +200,33 @@ def test_本番ではSecure属性が付く(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("SECRET_KEY", "x" * 64)
     monkeypatch.setenv("DATABASE_URL", "postgresql+pg8000://u:p@h:5432/d")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://careshift.example.jp")
     config.get_settings.cache_clear()
     assert security.cookie_params()["secure"] is True
+    config.get_settings.cache_clear()
+
+
+def test_本番でPUBLIC_BASE_URLが未設定なら起動しない(monkeypatch):
+    """パスワード再設定リンクの絶対URLを推測に頼らせない。
+
+    逆プロキシとロードバランサを経由すると、アプリから見える
+    ホスト名・ポート・プロトコルは利用者が見ているものと一致しない。
+    実際に、Host にポートが含まれず開けないリンクになる事象を踏んだ。
+    """
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("SECRET_KEY", "x" * 64)
+    monkeypatch.setenv("DATABASE_URL", "postgresql+pg8000://u:p@h:5432/d")
+    monkeypatch.delenv("PUBLIC_BASE_URL", raising=False)
+    config.get_settings.cache_clear()
+    with pytest.raises(RuntimeError, match="PUBLIC_BASE_URL"):
+        config.get_settings()
+    config.get_settings.cache_clear()
+
+
+def test_PUBLIC_BASE_URLの形式を検査する(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "careshift.example.jp")
+    config.get_settings.cache_clear()
+    with pytest.raises(RuntimeError, match="http"):
+        config.get_settings()
     config.get_settings.cache_clear()

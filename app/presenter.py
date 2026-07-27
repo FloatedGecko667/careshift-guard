@@ -8,7 +8,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
-from app.jobs import FTE_TARGET_JOBS
+from app.jobs import FTE_TARGET_JOBS, JOB_ORDER
 from app.solver import REST, Problem, Solution
 
 WD = ["月", "火", "水", "木", "金", "土", "日"]
@@ -16,6 +16,18 @@ KIND_LABEL = {"fte": "常勤換算", "headcount": "実人数"}
 
 # 余裕が少ない日を黄色で示す閾値（常勤換算）
 WARN_MARGIN = 0.2
+
+
+def _hhmm(minute: int) -> str:
+    """0時からの経過分を時刻表記にする。"""
+    return f"{minute // 60:02d}:{minute % 60:02d}"
+
+
+def _time_label(pattern: Any) -> str:
+    """勤務区分の時間帯。公休など勤務時間が0のものは空にする。"""
+    if not pattern.work_minutes:
+        return ""
+    return f"{_hhmm(pattern.start)}〜{_hhmm(pattern.end)}"
 
 
 def make_context(prob: Problem, sol: Solution, *, year: int, month: int,
@@ -43,9 +55,14 @@ def make_context(prob: Problem, sol: Solution, *, year: int, month: int,
         if sol.assign[i, d] != p:
             missed.add((i, d))
 
-    # 職種ごとに職員をまとめる。判定対象の職種のみ表に出す。
+    # 職種ごとに職員をまとめる。
+    #
+    # 表に出す職種は JOB_ORDER（全職種）である。FTE_TARGET_JOBS に
+    # 絞ってはいけない。管理者は常勤換算の対象外だが、実際には勤務する。
+    # 絞ると管理者の行が画面から消え、勤務形態一覧表（管理者を含む）と
+    # 食い違う。管理者に紐づく利用者は自分のシフトも見られなくなる。
     groups = []
-    for job in FTE_TARGET_JOBS:
+    for job in JOB_ORDER:
         rows = []
         for i, st in enumerate(prob.staff):
             if st.job != job:
@@ -53,12 +70,20 @@ def make_context(prob: Problem, sol: Solution, *, year: int, month: int,
             cells = []
             for d in range(prob.num_days):
                 p = sol.assign[i, d]
+                pat = prob.patterns[p]
                 cells.append({
-                    "code": "休" if p == REST else prob.patterns[p].name[:1],
+                    "code": "休" if p == REST else pat.name[:1],
                     "is_rest": p == REST,
                     "is_manual": False,
                     "pref_missed": (i, d) in missed,
                     "date": days[d]["date"],
+                    # 以下は狭い画面の一覧表示で使う。
+                    # 1文字の記号だけでは、スマートフォンで見たときに
+                    # 何時から何時までなのか読み取れない。
+                    "name": pat.name,
+                    "time_label": _time_label(pat),
+                    "hours": (round(pat.work_minutes / 60, 1)
+                              if pat.work_minutes else None),
                 })
             rows.append({
                 "id": staff_ids[i] if staff_ids else i + 1,
@@ -133,4 +158,32 @@ def make_context(prob: Problem, sol: Solution, *, year: int, month: int,
         },
         "days": days, "groups": groups, "fte_rows": fte_rows,
         "violations": violations, "stats": stats, "patterns": patterns,
+        # 狭い画面向けの日別サマリー。
+        # 31日×職員数の表はスマートフォンでは読めないため、
+        # 「その日は基準を満たしているか」だけを縦に並べたものを別に用意する。
+        "day_summary": _day_summary(days, fte_rows),
     }
+
+
+def _day_summary(days: list[dict[str, Any]],
+                 fte_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """日ごとの充足状況。狭い画面ではこれを縦に並べる。"""
+    out = []
+    for d, day in enumerate(days):
+        jobs = []
+        worst = "ok"
+        for row in fte_rows:
+            cell = row["cells"][d]
+            if cell["cls"] == "closed":
+                continue
+            jobs.append({"job_label": row["job_label"],
+                         "required": cell["required"],
+                         "actual": cell["actual"], "cls": cell["cls"]})
+            if cell["cls"] == "ng":
+                worst = "ng"
+            elif cell["cls"] == "warn" and worst == "ok":
+                worst = "warn"
+        closed = not jobs
+        out.append({**day, "jobs": jobs, "closed": closed,
+                    "state": "closed" if closed else worst})
+    return out

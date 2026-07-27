@@ -1,56 +1,43 @@
 {#
-  希望シフトの1日分。htmx による部分更新の差し替え単位。
+  希望シフトの1日分。カレンダーの1セルであり、htmx による差し替え単位。
 
-  この断片は単体でも成立する必要がある。
-  base.html は継承しない。
+  この断片は単体でも成立する必要がある。base.html は継承しない。
+
+  1タップで希望休が付く／外れる。
+  すでに何か登録されていれば取消（/requests/delete）へ、
+  無ければ希望休の登録（/requests）へ送る。
+  action を切り替えるだけなので JavaScript は要らない。
 #}
-<div class="day-row {{ 'closed' if d.closed }}" id="day-{{ d.date }}">
-  <span class="d">
-    {{ d.n }}日
-    <span class="{{ 'sun' if d.weekday == '日' else ('sat' if d.weekday == '土' else '') }}"
-    >（{{ d.weekday }}）</span>
-  </span>
-
-  {%- if d.closed %}
-    <span class="muted">休業日</span>
-  {%- else %}
-    {%- if d.request %}
-      {%- set t = d.request.request_type %}
-      <span class="cur {{ t }}">
-        {%- if t == 'off' %}希望休
-        {%- elif t == 'unavailable' %}勤務不可
-        {%- else %}区分希望{% endif %}
-      </span>
-    {%- endif %}
-
-    {#
-      hx-post があれば htmx が該当行だけを差し替える。
-      htmx が読み込まれていない場合は通常のフォーム送信となり、
-      全画面が再描画されるだけで機能は失われない。
-    #}
-    <form method="post" action="/requests"
-          hx-post="/requests" hx-target="#day-{{ d.date }}" hx-swap="outerHTML">
-      <input type="hidden" name="target_date" value="{{ d.date }}">
-      {%- if is_admin %}
-      <input type="hidden" name="staff_id" value="{{ target_staff_id }}">
-      {%- endif %}
-      <select name="request_type" aria-label="{{ d.n }}日の希望">
-        <option value="off">希望休</option>
-        <option value="unavailable">勤務不可</option>
-      </select>
-      <button class="btn" type="submit">登録</button>
-    </form>
-
-    {%- if d.request %}
-    <form method="post" action="/requests/delete"
-          hx-post="/requests/delete" hx-target="#day-{{ d.date }}"
-          hx-swap="outerHTML">
-      <input type="hidden" name="target_date" value="{{ d.date }}">
-      {%- if is_admin %}
-      <input type="hidden" name="staff_id" value="{{ target_staff_id }}">
-      {%- endif %}
-      <button class="btn" type="submit">取消</button>
-    </form>
-    {%- endif %}
+{%- set t = d.request.request_type if d.request else '' %}
+<form class="cell{{ ' closed' if d.closed }}{{ ' ' ~ t if t }}{{ ' sun' if d.weekday == '日' else (' sat' if d.weekday == '土' else '') }}"
+      id="day-{{ d.date }}"
+      method="post"
+      action="{{ '/requests/delete' if d.request else '/requests' }}"
+      hx-post="{{ '/requests/delete' if d.request else '/requests' }}"
+      hx-target="#day-{{ d.date }}" hx-swap="outerHTML">
+  <input type="hidden" name="target_date" value="{{ d.date }}">
+  {%- if not d.request %}
+  {# 1タップでの登録は希望休のみ。勤務不可と区分希望は下の詳細欄から #}
+  <input type="hidden" name="request_type" value="off">
   {%- endif %}
-</div>
+  {%- if is_admin %}
+  <input type="hidden" name="staff_id" value="{{ target_staff_id }}">
+  {%- endif %}
+
+  <button type="submit" {% if d.closed %}disabled{% endif %}
+          aria-label="{{ d.n }}日（{{ d.weekday }}）
+{%- if d.closed %}　休業日
+{%- elif t == 'off' %}　希望休を取り消す
+{%- elif t == 'unavailable' %}　勤務不可を取り消す
+{%- elif t == 'pattern' %}　勤務区分の希望を取り消す
+{%- else %}　希望休を出す{% endif %}">
+    <span class="n">{{ d.n }}</span>
+    <span class="tag">
+      {%- if d.closed %}休業
+      {%- elif t == 'off' %}希望休
+      {%- elif t == 'unavailable' %}勤務不可
+      {%- elif t == 'pattern' %}区分希望
+      {%- else %}&nbsp;{% endif %}
+    </span>
+  </button>
+</form>

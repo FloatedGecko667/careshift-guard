@@ -1,6 +1,19 @@
 {% extends "base.html" %}
 {% block title %}アカウント管理｜CareShift Guard{% endblock %}
 
+{% block head %}
+<style>
+  .new-account{display:grid;grid-template-columns:2fr 1fr 2fr auto;gap:12px;
+               align-items:end}
+  @media (max-width:719px){
+    .new-account{grid-template-columns:1fr}
+    /* 操作ボタンはカード内で横に並べる */
+    table.list.cards td[data-label="操作"]{flex-wrap:wrap}
+    table.list.cards td[data-label="操作"] .btn{flex:1 1 auto}
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>アカウント管理</h1>
 
@@ -29,7 +42,7 @@
 
 <div class="card">
   <h2>アカウント一覧（{{ users | length }}件）</h2>
-  <table class="list">
+  <table class="list cards">
     <thead>
       <tr>
         <th>メールアドレス</th>
@@ -44,8 +57,8 @@
     <tbody>
       {% for u in users %}
       <tr {% if not u.is_active %}style="color:var(--muted);background:#fafafa"{% endif %}>
-        <td>{{ u.email }}</td>
-        <td>
+        <td data-label="メールアドレス">{{ u.email }}</td>
+        <td data-label="権限">
           <form method="post" action="/accounts/{{ u.user_id }}/role"
                 style="display:flex;gap:4px;margin:0">
             <select name="role" style="width:auto">
@@ -56,7 +69,7 @@
             <button class="btn" type="submit">変更</button>
           </form>
         </td>
-        <td>
+        <td data-label="紐付く職員">
           {% if u.staff_name %}
             {{ u.staff_name }}（{{ job_labels.get(u.job_type, u.job_type) }}）
             {% if u.retired_on %}<span class="muted">退職 {{ u.retired_on }}</span>{% endif %}
@@ -64,17 +77,17 @@
             <span class="muted">—</span>
           {% endif %}
         </td>
-        <td>
+        <td data-label="状態">
           {% if u.is_active %}有効{% else %}<strong>無効</strong>{% endif %}
         </td>
-        <td>
+        <td data-label="最終ログイン">
           {% if u.last_login_at %}{{ u.last_login_at.strftime('%Y-%m-%d %H:%M') }}
           {% else %}<span class="muted">未ログイン</span>{% endif %}
         </td>
-        <td>
+        <td data-label="未使用リンク">
           {% if u.pending_reset_at %}あり{% else %}<span class="muted">—</span>{% endif %}
         </td>
-        <td style="display:flex;gap:6px">
+        <td data-label="操作" style="display:flex;gap:6px">
           <form method="post" action="/accounts/{{ u.user_id }}/reset" style="margin:0">
             <button class="btn" type="submit">再設定リンク発行</button>
           </form>
@@ -105,7 +118,7 @@
 <div class="card">
   <h2>アカウントを作成する</h2>
   <form method="post" action="/accounts">
-    <div style="display:grid;grid-template-columns:2fr 1fr 2fr auto;gap:12px;align-items:end">
+    <div class="new-account">
       <div>
         <label for="email">メールアドレス</label>
         <input id="email" name="email" type="email" required
