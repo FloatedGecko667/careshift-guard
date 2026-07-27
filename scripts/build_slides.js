@@ -411,12 +411,12 @@ function shotTracked(slide, file, o) {
     x: M, y: 2.0, w: 3.5, h: 4.3,
     hint: "カレンダーと下端タブが写るように（画面幅 600px 程度）" });
 
-  s.addText("自分のシフト　時間帯まで1行で読める", {
+  s.addText("確定前は職員に見せない", {
     x: M + 3.75, y: 1.6, w: 3.5, h: 0.34, fontFace: F.body, fontSize: 12,
     bold: true, color: C.deep, margin: 0 });
-  shotTracked(s, "25_my_shift_mobile.png", {
+  shotTracked(s, "25_staff_pending.png", {
     x: M + 3.75, y: 2.0, w: 3.5, h: 4.3,
-    hint: "日付・勤務区分・時間帯・実働時間の一覧" });
+    hint: "職員として開いたときの未確定の表示と下端タブ" });
 
   const rowsStaff = [
     ["下端の固定タブに集約",
@@ -427,23 +427,28 @@ function shotTracked(slide, file, o) {
     ["31日×職員数の表は出さない",
      "横スクロールする表は片手で追えない。自分の行だけを縦に並べる"],
     ["職員に見せないものを決める",
-     "求解の状態・違反件数・確定前のシフトは出さない。" +
-     "対処できるのは管理者だけで、職員には不安だけを与える"],
+     "求解の状態・違反件数は出さない。対処できるのは管理者だけで、" +
+     "職員には不安だけを与える"],
+    ["確定後に「自分のシフト」を縦一覧で出す",
+     "日付・勤務区分・時間帯・実働時間を1行で読める。" +
+     "確定前は右の画面のように内容を出さない"],
     ["色だけに頼らない／44px以上",
      "色覚特性のある職員に伝わらないため文字も併記。" +
      "入力欄は16px以上（下回ると iOS が勝手に拡大する）"],
   ];
-  let ys = 1.75;
+  // 6項目を 1.60〜6.35 に収める。行送りは (6.35-1.60)/6 = 0.79
+  let ys = 1.60;
   const bx = M + 7.6;
+  const gap = 0.79;
   rowsStaff.forEach(([t, d]) => {
-    card(s, { x: bx, y: ys, w: W - M - bx, h: 0.88 });
-    s.addText(t, { x: bx + 0.2, y: ys + 0.08, w: W - M - bx - 0.4, h: 0.3,
-                   fontFace: F.body, fontSize: 12, bold: true, color: C.dark,
+    card(s, { x: bx, y: ys, w: W - M - bx, h: gap - 0.09 });
+    s.addText(t, { x: bx + 0.18, y: ys + 0.05, w: W - M - bx - 0.36, h: 0.26,
+                   fontFace: F.body, fontSize: 11.5, bold: true, color: C.dark,
                    margin: 0 });
-    s.addText(d, { x: bx + 0.2, y: ys + 0.36, w: W - M - bx - 0.4, h: 0.48,
-                   fontFace: F.body, fontSize: 10, color: C.muted, margin: 0,
-                   lineSpacingMultiple: 1.1 });
-    ys += 0.96;
+    s.addText(d, { x: bx + 0.18, y: ys + 0.29, w: W - M - bx - 0.36, h: 0.40,
+                   fontFace: F.body, fontSize: 9.5, color: C.muted, margin: 0,
+                   lineSpacingMultiple: 1.05 });
+    ys += gap;
   });
   s.addText("同種の製品も職員側の機能は「シフトの確認」と「希望休の入力」に" +
             "絞られている。本ソリューションも同じ2つを下端タブの先頭に置いた。", {

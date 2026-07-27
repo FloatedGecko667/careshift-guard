@@ -1,8 +1,8 @@
 === docker compose ps ===
-NAME                      IMAGE                 COMMAND                  SERVICE   CREATED         STATUS                   PORTS
-careshift-guard-db-1      postgres:18-alpine    "docker-entrypoint.s…"   db        2 minutes ago   Up 2 minutes (healthy)   5432/tcp
-careshift-guard-nginx-1   nginx:1.28-alpine     "/docker-entrypoint.…"   nginx     2 minutes ago   Up 2 minutes             0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
-careshift-guard-web-1     careshift-guard-web   "uvicorn app.main:ap…"   web       8 seconds ago   Up 7 seconds (healthy)   8000/tcp
+NAME                      IMAGE                 COMMAND                  SERVICE   CREATED          STATUS                   PORTS
+careshift-guard-db-1      postgres:18-alpine    "docker-entrypoint.s…"   db        22 hours ago     Up 2 hours (healthy)     5432/tcp
+careshift-guard-nginx-1   nginx:1.28-alpine     "/docker-entrypoint.…"   nginx     22 hours ago     Up 2 hours               0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+careshift-guard-web-1     careshift-guard-web   "uvicorn app.main:ap…"   web       11 seconds ago   Up 7 seconds (healthy)   8000/tcp
 
 === 各コンテナのイメージとアーキテクチャ ===
 /careshift-guard-db-1  image=postgres:18-alpine  arch=linux  status=healthy
