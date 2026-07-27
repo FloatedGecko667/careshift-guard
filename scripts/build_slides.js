@@ -412,11 +412,18 @@ function shotTracked(slide, file, o) {
     hint: "カレンダーと下端タブが写るように（画面幅 600px 程度）" });
 
   s.addText("確定前は職員に見せない", {
-    x: M + 3.75, y: 1.6, w: 3.5, h: 0.34, fontFace: F.body, fontSize: 12,
+    x: M + 3.75, y: 1.6, w: 1.7, h: 0.34, fontFace: F.body, fontSize: 10.5,
     bold: true, color: C.deep, margin: 0 });
   shotTracked(s, "25_staff_pending.png", {
-    x: M + 3.75, y: 2.0, w: 3.5, h: 4.3,
+    x: M + 3.75, y: 2.0, w: 1.7, h: 4.3,
     hint: "職員として開いたときの未確定の表示と下端タブ" });
+
+  s.addText("管理者は外出先で日別判定", {
+    x: M + 5.55, y: 1.6, w: 1.7, h: 0.34, fontFace: F.body, fontSize: 10.5,
+    bold: true, color: C.deep, margin: 0 });
+  shotTracked(s, "27_admin_daily_mobile.png", {
+    x: M + 5.55, y: 2.0, w: 1.7, h: 4.3,
+    hint: "狭い画面での日別の充足状況とタブ4つ" });
 
   const rowsStaff = [
     ["下端の固定タブに集約",
