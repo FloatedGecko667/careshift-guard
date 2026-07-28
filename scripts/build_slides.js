@@ -516,7 +516,8 @@ function shotTracked(slide, file, o) {
 // ========================================================= 10 技術構成
 {
   const s = pres.addSlide();
-  titleBar(s, "技術構成", "Docker Compose 3コンテナ／Oracle Cloud Infrastructure");
+  titleBar(s, "技術構成　実際の負荷に見合うまで削る",
+           "サーバー1台・3コンテナ。月額インフラ原価 4,289円");
   shot(s, "00_architecture.png", { x: M, y: 1.6, w: 8.3, h: 4.7 });
 
   const items = [
@@ -525,9 +526,9 @@ function shotTracked(slide, file, o) {
     ["AI", "採用しない（次のスライドで理由を述べます）", false],
     ["PaaS", "採用しない（IaaS上のコンテナ構成を選択）", false],
   ];
-  let iy = 1.75;
+  let iy = 1.68;
   items.forEach(([t, d, ok]) => {
-    card(s, { x: M + 8.6, y: iy, w: W - M * 2 - 8.6, h: 1.05,
+    card(s, { x: M + 8.6, y: iy, w: W - M * 2 - 8.6, h: 1.0,
               fill: ok ? C.white : C.bg });
     s.addText(ok ? "充足" : "—", {
       x: M + 8.75, y: iy + 0.12, w: 0.7, h: 0.32, fontFace: F.body,
@@ -535,11 +536,32 @@ function shotTracked(slide, file, o) {
       align: "center", margin: 0 });
     s.addText(t, { x: M + 9.5, y: iy + 0.1, w: 2.5, h: 0.34, fontFace: F.body,
                    fontSize: 13, bold: true, color: C.dark, margin: 0 });
-    s.addText(d, { x: M + 8.75, y: iy + 0.46, w: W - M * 2 - 8.9, h: 0.52,
+    s.addText(d, { x: M + 8.75, y: iy + 0.44, w: W - M * 2 - 8.9, h: 0.5,
                    fontFace: F.body, fontSize: 10, color: C.muted, margin: 0 });
-    iy += 1.16;
+    iy += 1.1;
   });
-  s.addNotes("25秒。指定要件は『いずれか1つ以上』。2項目を充足していると述べる。");
+
+  // 冗長化しない判断とその根拠。過剰な構成を採らないこと自体が設計判断である。
+  card(s, { x: M + 8.6, y: 6.12, w: W - M * 2 - 8.6, h: 0.0 });
+  s.addText("冗長化しない判断", {
+    x: M + 8.6, y: 6.16, w: W - M * 2 - 8.6, h: 0.3,
+    fontFace: F.body, fontSize: 12, bold: true, color: C.dark, margin: 0 });
+  s.addText("確定シフトは Excel と印刷で手元に残るため、" +
+            "停止しても現場は勤務を継続できる。" +
+            "ロードバランサと待機系を置かず、月額を抑えることを選んだ。", {
+    x: M + 8.6, y: 6.46, w: W - M * 2 - 8.6, h: 0.7,
+    fontFace: F.body, fontSize: 9.5, color: C.muted, margin: 0,
+    lineSpacingMultiple: 1.1 });
+
+  s.addText("30事業所を収容しても、求解によるCPU占有は月0.06％、" +
+            "画面のリクエストは平均0.05件/秒。2 OCPU としたのは" +
+            "「求解に1コア、画面応答に1コア」を確保するためである。", {
+    x: M, y: 6.45, w: 8.3, h: 0.5,
+    fontFace: F.body, fontSize: 10, color: C.muted, margin: 0 });
+
+  s.addNotes("30秒。指定要件は『いずれか1つ以上』で2項目を充足。" +
+             "そのうえで『実際の負荷を測って構成を削った』ことを述べる。" +
+             "止まっても印刷で回るという業務特性が、この判断の根拠である。");
 }
 
 // ================================================== 11 生成AIを使わない理由
@@ -612,15 +634,16 @@ function shotTracked(slide, file, o) {
     [{ text: "項目", options: { bold: true } },
      { text: "金額", options: { bold: true, align: "right" } },
      { text: "根拠", options: { bold: true } }],
-    ["インフラ原価（1事業所あたり）", { text: "220円/月", options: { align: "right" } },
-     "共通基盤 10,999円 ÷ 50テナント"],
-    ["月次の粗利", { text: "12,280円", options: { align: "right" } },
-     "粗利率 74.4パーセント"],
+    ["インフラ原価（1事業所あたり）", { text: "429円/月", options: { align: "right" } },
+     "共通基盤 4,289円 ÷ 10事業所。サーバーは1台"],
+    ["月次の粗利", { text: "12,071円", options: { align: "right" } },
+     "粗利率 73.2パーセント"],
     ["初期開発費", { text: "816,000円", options: { align: "right" } },
      "136時間 × 6,000円"],
     [{ text: "損益分岐点", options: { bold: true } },
-     { text: "4事業所", options: { bold: true, align: "right", color: C.alert } },
-     { text: "4事業所と契約した時点で初年度から黒字", options: { bold: true } }],
+     { text: "5事業所", options: { bold: true, align: "right", color: C.alert } },
+     { text: "基盤の原価を契約数で割り付けて算定（収容上限で割らない）",
+       options: { bold: true } }],
   ];
   s.addTable(tbl, {
     x: M, y: 4.05, w: W - M * 2, colW: [4.6, 2.2, 5.3],
@@ -628,12 +651,15 @@ function shotTracked(slide, file, o) {
     fill: { color: C.white }, rowH: 0.42, valign: "middle",
   });
 
-  s.addText("インフラ原価は月額利用料の1.3パーセントに収まります。" +
-            "GPUを使わない設計にしたことが、この価格を成立させています。", {
+  s.addText("インフラ原価は月額利用料の2.6パーセントに収まります。" +
+            "GPUを使わないこと、そして実際の負荷に見合うまで構成を削ったことが、" +
+            "この価格を成立させています。", {
     x: M, y: 6.35, w: W - M * 2, h: 0.5,
     fontFace: F.body, fontSize: 12, color: C.muted, margin: 0 });
-  s.addNotes("40秒。損益分岐4事業所を強調。" +
-             "『補助金も無料枠も前提にしていない』と明言する。");
+  s.addNotes("40秒。損益分岐5事業所を強調。" +
+             "『補助金も無料枠も前提にしていない』と明言する。" +
+             "収容上限で割った単価を少数契約時に使うと収益性を過大評価するため、" +
+             "契約数で割り付けて算定し直したと述べる。");
 }
 
 // =================================================== 13 経営者への投資対効果
