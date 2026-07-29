@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help init vendor up down logs migrate seed shell test lint fmt sample xlsximg evidence pv slides smoke demo clean
+.PHONY: help init vendor up down logs migrate seed shell test lint fmt scan sample xlsximg evidence pv slides smoke demo clean
 
 help:  ## 使えるターゲットを一覧表示する
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -46,6 +46,12 @@ lint:  ## 静的解析
 fmt:  ## 整形
 	python3 -m ruff format .
 	python3 -m ruff check --fix .
+
+scan:  ## 秘密情報の混入を履歴全体で確認する（push する前に実行する）
+	@docker run --rm -v "$(PWD):/repo" -w /repo \
+	  zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+	  detect --source=/repo --redact --no-banner
+	@echo "履歴に秘密情報は見つかりませんでした"
 
 sample:  ## サンプルの勤務形態一覧表を生成する
 	python3 -m scripts.export_sample
